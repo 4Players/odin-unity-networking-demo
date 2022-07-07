@@ -59,7 +59,7 @@ namespace Odin.OdinNetworking
             }
             
             bool value = BitConverter.ToBoolean(_bytes, _cursor);
-            _cursor += sizeof(int);
+            _cursor += sizeof(bool);
             return value;
         }
         
