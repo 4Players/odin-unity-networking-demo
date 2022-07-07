@@ -18,7 +18,7 @@ namespace Odin.OdinNetworking
 
         public void Execute()
         {
-            result[0] = room.UpdateUserData(writer);
+            result[0] = room.UpdatePeerUserData(writer);
         }
     }
 
@@ -191,7 +191,7 @@ namespace Odin.OdinNetworking
         private void SendUserDataUpdateWorker(object state)
         {
             var workerItem = state as OdinUpdateUserWorkItem;
-            workerItem.room.UpdateUserData(workerItem.userData);
+            workerItem.room.UpdatePeerUserData(workerItem.userData);
         }
 /*
         private Promise<bool> SendUserDataWorker(Room room, IUserData userData)
