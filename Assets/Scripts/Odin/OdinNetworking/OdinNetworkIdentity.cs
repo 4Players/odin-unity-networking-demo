@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using ElRaccoone.Tweens;
 using OdinNative.Odin.Peer;
 using OdinNetworking;
 using UnityEngine;
@@ -148,9 +149,9 @@ namespace Odin.OdinNetworking
             var hasTransform = reader.ReadBoolean();
             if (hasTransform)
             {
-                transform.localPosition = reader.ReadVector3();
-                transform.localRotation = reader.ReadQuaternion();
-                transform.localScale = reader.ReadVector3();
+                gameObject.TweenLocalPosition(reader.ReadVector3(), SendInterval);
+                gameObject.TweenLocalRotation(reader.ReadQuaternion().eulerAngles, SendInterval);
+                gameObject.TweenLocalScale(reader.ReadVector3(), SendInterval);
             }
 
             var numberOfSyncVars = reader.ReadByte();
