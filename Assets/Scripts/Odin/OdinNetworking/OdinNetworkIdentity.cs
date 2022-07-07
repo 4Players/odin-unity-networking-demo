@@ -81,34 +81,41 @@ namespace Odin.OdinNetworking
                 return;
             }
             
-            foreach (var key in _syncVars.Keys)
-            {
-                OdinSyncVarInfo syncInfo = _syncVars[key];
-                object currentValue = syncInfo.FieldInfo.GetValue(this); 
-                if (currentValue != syncInfo.LastValue)
-                {
-                    Debug.Log($"Value for SyncVar {key} changed. Old value: {syncInfo.LastValue}, new Value: {currentValue}");
-                    syncInfo.LastValue = currentValue;
-
-                    OdinNetworkWriter writer = new OdinNetworkWriter();
-                    writer.Write((byte)OdinMessageType.UpdateSyncVar);
-                    writer.Write(syncInfo.FieldInfo.Name);
-                    writer.Write(currentValue);
-                    OdinNetworkManager.Instance.SendMessage(writer);
-                }
-            }
-
             // Compile user data
             if (Time.time - _lastSent > SendInterval)
             {
                 OdinNetworkWriter userData = new OdinNetworkWriter();
+                userData.Write(SyncTransform);
                 if (SyncTransform)
                 {
                     userData.Write(transform.localPosition);
                     userData.Write(transform.localRotation);
                     userData.Write(transform.localScale);
                 }
-            
+
+                byte numberOfDirtySyncVars = 0;
+                Dictionary<string, object> dirtySyncVars = new Dictionary<string, object>();
+                foreach (var key in _syncVars.Keys)
+                {
+                    OdinSyncVarInfo syncInfo = _syncVars[key];
+                    object currentValue = syncInfo.FieldInfo.GetValue(this);
+                    if (currentValue != syncInfo.LastValue)
+                    {
+                        Debug.Log($"Value for SyncVar {key} changed. Old value: {syncInfo.LastValue}, new Value: {currentValue}");
+                        
+                        dirtySyncVars[syncInfo.FieldInfo.Name] = currentValue;
+                        syncInfo.LastValue = currentValue;
+                        numberOfDirtySyncVars++;
+                    }
+                }
+
+                userData.Write(numberOfDirtySyncVars);
+                foreach (var key in dirtySyncVars.Keys)
+                {
+                    userData.Write(key);
+                    userData.Write(dirtySyncVars[key]);
+                }
+
                 // Compare if things have changed, then send an update
                 if (!userData.IsEqual(_lastUserData))
                 {
@@ -138,11 +145,32 @@ namespace Odin.OdinNetworking
 
         public void UserDataUpdated(OdinNetworkReader reader)
         {
-            if (SyncTransform)
+            var hasTransform = reader.ReadBoolean();
+            if (hasTransform)
             {
                 transform.localPosition = reader.ReadVector3();
                 transform.localRotation = reader.ReadQuaternion();
                 transform.localScale = reader.ReadVector3();
+            }
+
+            var numberOfSyncVars = reader.ReadByte();
+            if (numberOfSyncVars > 0)
+            {
+                for (byte i = 0; i < numberOfSyncVars; i++)
+                {
+                    var syncVarName = reader.ReadString();
+                    var currentValue = reader.ReadObject();
+                
+                    OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
+                    if (syncInfo != null)
+                    {
+                        syncInfo.FieldInfo.SetValue(this, currentValue);    
+                    }
+                    else
+                    {
+                        Debug.LogError($"Could not find Syncvar with name {syncVarName}");
+                    }                    
+                }
             }
         }
         
