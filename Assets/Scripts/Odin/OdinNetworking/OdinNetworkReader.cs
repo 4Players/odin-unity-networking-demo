@@ -39,6 +39,23 @@ namespace Odin.OdinNetworking
             return value;
         }
 
+        public OdinPrimitive ReadPrimitiveType()
+        {
+            return (OdinPrimitive)ReadByte();
+        }
+        
+        public OdinMessageType ReadMessageType()
+        {
+            return (OdinMessageType)ReadByte();
+        }
+
+        public void ReadTransform(Transform transform)
+        {
+            transform.localPosition = ReadVector3();
+            transform.localRotation = ReadQuaternion();
+            transform.localScale = ReadVector3();
+        }
+
         public int ReadInt()
         {
             if (_cursor + sizeof(int) >= _bytes.Length)

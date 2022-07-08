@@ -104,6 +104,31 @@ namespace Odin.OdinNetworking
             Write(value.z);
             Write(value.w);
         }
+        
+        public void Write(OdinPrimitive value)
+        {
+            Write((byte)value);
+        }
+        
+        public void Write(OdinMessageType value)
+        {
+            Write((byte)value);
+        }
+
+        public void Write(Transform transform)
+        {
+            Write(transform.localPosition);
+            Write(transform.localRotation);
+            Write(transform.localScale);
+        }
+
+        public void Write(OdinNetworkWriter writer)
+        {
+            for (int i = 0; i < writer.Cursor; i++)
+            {
+                Write(writer.GetByteAt(i));
+            }
+        }
 
         public void Write(object value)
         {
@@ -186,6 +211,11 @@ namespace Odin.OdinNetworking
             }
 
             return true;
+        }
+
+        public override string ToString()
+        {
+            return BitConverter.ToString(ToBytes()).Replace("-","");
         }
     }
 }
