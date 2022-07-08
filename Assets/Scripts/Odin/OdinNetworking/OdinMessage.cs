@@ -39,7 +39,7 @@ namespace Odin.OdinNetworking
     {
         public OdinMessage(OdinMessageType type)
         {
-            Write((int)type);          
+            Write(type);          
         }
     }
 
