@@ -106,11 +106,11 @@ namespace Odin.OdinNetworking
             }
         }
 
-        public OdinNetworkedObject FindNetworkedObject(ulong peerId, int networkId)
+        public OdinNetworkedObject FindNetworkedObject(ulong peerId, byte networkId)
         {
             foreach (var networkedObject in FindObjectsOfType<OdinNetworkedObject>())
             {
-                if (networkedObject.Owner.Peer.Id == peerId && networkedObject.NetworkId == networkId)
+                if (networkedObject.Owner.Peer.Id == peerId && networkedObject.ObjectId == networkId)
                 {
                     return networkedObject;
                 }
@@ -165,6 +165,7 @@ namespace Odin.OdinNetworking
         {
             OdinPlayer player = Instantiate(prefab);
             player.Peer = peer;
+            player.OnAwakeClient();
             return player;
         }
 
@@ -236,26 +237,47 @@ namespace Odin.OdinNetworking
 
         }
 
-        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkIdentity owner, string prefabName, int objectId, Vector3 position, Quaternion rotation)
+        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkIdentity owner, byte prefabId, byte objectId, Vector3 position, Quaternion rotation)
         {
-            foreach (var networkedObject in spawnablePrefabs)
+            if (prefabId >= spawnablePrefabs.Count)
             {
+                Debug.LogError($"Could not prefab with id: {prefabId}");
+                return null;
+            }
+            
+            var prefab = spawnablePrefabs[prefabId];
+            var obj = Instantiate(prefab, position, rotation);
+            obj.Owner = owner;
+            obj.ObjectId = objectId;
+            obj.PrefabId = prefabId;
+            obj.OnAwakeClient();
+
+            // Make sure that rigid bodies are set to kinetic if they have been spawned by other clients (they control the position)
+            if (!owner.IsLocalPlayer())
+            {
+                foreach (var rb in obj.gameObject.GetComponentsInChildren<Rigidbody>())
+                {
+                    rb.isKinematic = true;
+                }    
+            }
+            
+            obj.OnStartClient();
+            if (owner.IsLocalPlayer())
+            {
+                obj.OnStartLocalClient();
+            }
+
+            return obj;
+        }
+
+        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkIdentity owner, string prefabName, byte objectId, Vector3 position, Quaternion rotation)
+        {
+            for (byte i=0;i<spawnablePrefabs.Count;i++)
+            {
+                var networkedObject = spawnablePrefabs[i];
                 if (networkedObject.name == prefabName)
                 {
-                    var obj = Instantiate(networkedObject, position, rotation);
-                    obj.Owner = owner;
-                    obj.NetworkId = objectId;
-                    
-                    // Make sure that rigid bodies are set to kinetic if they have been spawned by other clients (they control the position)
-                    if (!owner.IsLocalPlayer())
-                    {
-                        foreach (var rb in obj.gameObject.GetComponentsInChildren<Rigidbody>())
-                        {
-                            rb.isKinematic = true;
-                        }    
-                    }
-
-                    return obj;
+                    return SpawnPrefab(owner, i, objectId, position, rotation);
                 }   
             }
             
