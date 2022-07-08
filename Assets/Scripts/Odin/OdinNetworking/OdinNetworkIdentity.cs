@@ -97,12 +97,14 @@ namespace Odin.OdinNetworking
             if (Time.time - _lastSent > SendInterval)
             {
                 OdinNetworkWriter userData = new OdinNetworkWriter();
+                
+                // Update Transform
                 userData.Write(SyncTransform);
                 if (SyncTransform)
                 {
-                    userData.Write(transform.localPosition);
-                    userData.Write(transform.localRotation);
-                    userData.Write(transform.localScale);
+                    userData.Write(transform);
+                }
+                
                 // Update Animator
                 userData.Write(SyncAnimator && _animator);
                 if (SyncAnimator && _animator)
