@@ -30,6 +30,7 @@ Transform:
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
   m_RootOrder: 0
@@ -59,8 +60,9 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   Verbose: 0
-  AccessKey: 
-  ClientId: 
+  VerboseDebug: 0
+  AccessKey: AST55n/V5S27K08t2Yb89mEt4POECcw9S0Xleulhovn2
+  ClientId: DefaultCompany.Odin Network
   Server: https://gateway.odin.4players.io
   UserDataText: 
   DeviceSampleRate: 1
@@ -136,6 +138,9 @@ MonoBehaviour:
   OnMessageReceived:
     m_PersistentCalls:
       m_Calls: []
+  OnConnectionStateChanged:
+    m_PersistentCalls:
+      m_Calls: []
   OnCreatedMediaObject:
     m_PersistentCalls:
       m_Calls: []
@@ -143,8 +148,8 @@ MonoBehaviour:
     m_PersistentCalls:
       m_Calls: []
   _persistent: 1
-  Use3DAudio: 0
-  CreatePlayback: 1
+  Use3DAudio: 1
+  CreatePlayback: 0
   PlaybackAudioMixer: {fileID: 0}
   PlaybackAudioMixerGroup: {fileID: 0}
 --- !u!114 &3711129780530095855

@@ -53,12 +53,17 @@ namespace Odin.OdinNetworking
                 return;
             }
 
+            if (Keyboard.current.eKey.wasReleasedThisFrame)
+            {
+                SpawnNetworkedObject("Flower", transform.position, Quaternion.identity);
+            }
+
             if (_input.jump)
             {
                 if (Time.time - _lastSphereSpawn > 1)
                 {
                     Vector3 position = transform.position + (Vector3.up * 1.5f);
-                    Spawn("Sphere", position, Quaternion.identity);
+                    SpawnManagedNetworkedObject("Sphere", position, Quaternion.identity);
                     _lastSphereSpawn = Time.time;
                 }
             }
