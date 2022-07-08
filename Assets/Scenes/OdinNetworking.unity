@@ -778,26 +778,6 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
-    - target: {fileID: 5372910402810491490, guid: a421abe223e2dee45b89e686a84e5545,
-        type: 3}
-      propertyPath: ClientId
-      value: DefaultCompany.Odin Network
-      objectReference: {fileID: 0}
-    - target: {fileID: 5372910402810491490, guid: a421abe223e2dee45b89e686a84e5545,
-        type: 3}
-      propertyPath: AccessKey
-      value: AST55n/V5S27K08t2Yb89mEt4POECcw9S0Xleulhovn2
-      objectReference: {fileID: 0}
-    - target: {fileID: 7715469215244056103, guid: a421abe223e2dee45b89e686a84e5545,
-        type: 3}
-      propertyPath: Use3DAudio
-      value: 1
-      objectReference: {fileID: 0}
-    - target: {fileID: 7715469215244056103, guid: a421abe223e2dee45b89e686a84e5545,
-        type: 3}
-      propertyPath: CreatePlayback
-      value: 0
-      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a421abe223e2dee45b89e686a84e5545, type: 3}
 --- !u!1 &1740516322
@@ -1178,53 +1158,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1917726800}
   m_CullTransparentMesh: 1
---- !u!1 &1948600145
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1948600147}
-  - component: {fileID: 1948600146}
-  m_Layer: 0
-  m_Name: OdinNetworkManager
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!114 &1948600146
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1948600145}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c0962d8a79c4145c6aa111be881a6b8e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  roomName: World
-  playerPrefab: {fileID: 6802764646268601611, guid: 1ab31c61731554466b134524876cfaff,
-    type: 3}
---- !u!4 &1948600147
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1948600145}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 0}
-  m_RootOrder: 3
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &2111672188
 GameObject:
   m_ObjectHideFlags: 0
@@ -1278,3 +1211,94 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Padding: {x: -8, y: -5, z: -8, w: -5}
   m_Softness: {x: 0, y: 0}
+--- !u!1001 &2293135877942740262
+PrefabInstance:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Modification:
+    m_TransformParent: {fileID: 0}
+    m_Modifications:
+    - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_Enabled
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: playerPrefab
+      value: 
+      objectReference: {fileID: 8822470255715831883, guid: 81084f989d92f4c2b9b2a2418b030109,
+        type: 3}
+    - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: spawnablePrefabs.Array.size
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: spawnablePrefabs.Array.data[0]
+      value: 
+      objectReference: {fileID: -2522432067694616734, guid: 8873df61038e7411aba04d0169d86942,
+        type: 3}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_RootOrder
+      value: 3
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalPosition.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalPosition.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalPosition.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalRotation.w
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalRotation.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalRotation.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalRotation.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.x
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.y
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916085, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_LocalEulerAnglesHint.z
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916087, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
+      propertyPath: m_Name
+      value: OdinNetworkManager
+      objectReference: {fileID: 0}
+    m_RemovedComponents: []
+  m_SourcePrefab: {fileID: 100100000, guid: cf375621e85bb4de69720f1d0f5626ea, type: 3}
