@@ -15,12 +15,17 @@ namespace Odin.OdinNetworking
         [Header("Network Settings")]
         [Tooltip("Sync the transform as part of the peers user data")]
         [SerializeField] private bool SyncTransform = true;
+        
+        [Tooltip("Sync the animator")]
+        [SerializeField] private bool SyncAnimator = true;
 
         [Tooltip("The number of seconds until the next update is sent")]
         [SerializeField] private float SendInterval = 0.05f;
         
         private OdinNetworkWriter _lastUserData = null;
         private float _lastSent;
+
+        private Animator _animator;
         
         private class OdinSyncVarInfo
         {
@@ -48,6 +53,12 @@ namespace Odin.OdinNetworking
 
                     _syncVars[field.Name] = new OdinSyncVarInfo { FieldInfo = field, OdinSyncVar = syncVar, LastValue = field.GetValue(this) };
                 }
+            }
+            
+            // Get Animator
+            if (!_animator)
+            {
+                _animator = GetComponentInChildren<Animator>();    
             }
             
             // If this is not the local player, set rigid body to be kinetic (i.e. position and rotation is not part of
@@ -92,8 +103,32 @@ namespace Odin.OdinNetworking
                     userData.Write(transform.localPosition);
                     userData.Write(transform.localRotation);
                     userData.Write(transform.localScale);
+                // Update Animator
+                userData.Write(SyncAnimator && _animator);
+                if (SyncAnimator && _animator)
+                {
+                    userData.Write(_animator.parameterCount);
+                    foreach (var param in _animator.parameters)
+                    {
+                        if (param.type == AnimatorControllerParameterType.Bool)
+                        {
+                            userData.Write(OdinPrimitive.Bool);
+                            userData.Write(_animator.GetBool(param.name));       
+                        } 
+                        else if (param.type == AnimatorControllerParameterType.Float)
+                        {
+                            userData.Write(OdinPrimitive.Float);
+                            userData.Write(_animator.GetFloat(param.name));
+                        }
+                        else if (param.type == AnimatorControllerParameterType.Int)
+                        {
+                            userData.Write(OdinPrimitive.Integer);
+                            userData.Write(_animator.GetInteger(param.name));
+                        }
+                    }
                 }
 
+                // Update Sync Vars
                 byte numberOfDirtySyncVars = 0;
                 Dictionary<string, object> dirtySyncVars = new Dictionary<string, object>();
                 foreach (var key in _syncVars.Keys)
@@ -146,6 +181,7 @@ namespace Odin.OdinNetworking
 
         public void UserDataUpdated(OdinNetworkReader reader)
         {
+            // Read transform
             var hasTransform = reader.ReadBoolean();
             if (hasTransform)
             {
@@ -153,7 +189,33 @@ namespace Odin.OdinNetworking
                 gameObject.TweenLocalRotation(reader.ReadQuaternion().eulerAngles, SendInterval);
                 gameObject.TweenLocalScale(reader.ReadVector3(), SendInterval);
             }
-
+            
+            // Read Animator
+            var hasAnimator = reader.ReadBoolean();
+            if (hasAnimator)
+            {
+                _animator = GetComponent<Animator>();
+                var numberOfParams = reader.ReadInt();
+                for (int i = 0; i < numberOfParams; i++)
+                {
+                    var param = _animator.GetParameter(i);
+                    OdinPrimitive primitive = reader.ReadPrimitiveType();
+                    if (primitive == OdinPrimitive.Bool)
+                    {
+                        _animator.SetBool(param.name, reader.ReadBoolean());
+                    } 
+                    else if (primitive == OdinPrimitive.Float)
+                    {
+                        _animator.SetFloat(param.name, reader.ReadFloat());
+                    }
+                    else if (primitive == OdinPrimitive.Integer)
+                    {
+                        _animator.SetInteger(param.name, reader.ReadInt());
+                    }
+                }
+            }
+            
+            // Sync Vars
             var numberOfSyncVars = reader.ReadByte();
             if (numberOfSyncVars > 0)
             {
