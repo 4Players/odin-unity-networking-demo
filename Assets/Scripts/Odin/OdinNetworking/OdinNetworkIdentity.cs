@@ -242,9 +242,10 @@ namespace Odin.OdinNetworking
                     var networkedObject = OdinNetworkManager.Instance.FindNetworkedObject(sender.Peer.Id, networkId);
                     if (networkedObject)
                     {
-                        networkedObject.TweenLocalPosition(reader.ReadVector3(), SendInterval);
-                        networkedObject.TweenLocalRotation(reader.ReadQuaternion().eulerAngles, SendInterval);
-                        networkedObject.TweenLocalScale(reader.ReadVector3(), SendInterval);
+                        var (localPosition, localRotation, localScale) = reader.ReadTransform();
+                        networkedObject.TweenLocalPosition(localPosition, SendInterval);
+                        networkedObject.TweenLocalRotation(localRotation.eulerAngles, SendInterval);
+                        networkedObject.TweenLocalScale(localScale, SendInterval);
                     }
                 }
             }
@@ -256,9 +257,10 @@ namespace Odin.OdinNetworking
             var hasTransform = reader.ReadBoolean();
             if (hasTransform)
             {
-                gameObject.TweenLocalPosition(reader.ReadVector3(), SendInterval);
-                gameObject.TweenLocalRotation(reader.ReadQuaternion().eulerAngles, SendInterval);
-                gameObject.TweenLocalScale(reader.ReadVector3(), SendInterval);
+                var (localPosition, localRotation, localScale) = reader.ReadTransform();
+                gameObject.TweenLocalPosition(localPosition, SendInterval);
+                gameObject.TweenLocalRotation(localRotation.eulerAngles, SendInterval);
+                gameObject.TweenLocalScale(localScale, SendInterval);
             }
             
             // Read Animator

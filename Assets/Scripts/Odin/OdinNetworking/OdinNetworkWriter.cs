@@ -117,9 +117,34 @@ namespace Odin.OdinNetworking
 
         public void Write(Transform transform)
         {
-            Write(transform.localPosition);
-            Write(transform.localRotation);
-            Write(transform.localScale);
+            byte flags = 0;
+            if (!transform.localPosition.Equals(Vector3.zero))
+            {
+                flags |= (byte)OdinNetworkingFlags.HasPosition;
+            } 
+            if (!transform.localRotation.Equals(Quaternion.identity))
+            {
+                flags |= (byte)OdinNetworkingFlags.HasRotation;
+            }
+            if (!transform.localScale.Equals(Vector3.one))
+            {
+                flags |= (byte)OdinNetworkingFlags.HasScale;
+            }
+
+            Write(flags);
+            
+            if (!transform.localPosition.Equals(Vector3.zero))
+            {
+                Write(transform.localPosition);
+            } 
+            if (!transform.localRotation.Equals(Quaternion.identity))
+            {
+                Write(transform.localRotation);
+            }
+            if (!transform.localScale.Equals(Vector3.one))
+            {
+                Write(transform.localScale);
+            }
         }
 
         public void Write(OdinNetworkWriter writer)

@@ -4,6 +4,14 @@ using UnityEngine;
 
 namespace Odin.OdinNetworking
 {
+    [Flags]
+    public enum OdinNetworkingFlags: byte
+    {
+        HasPosition = 1,
+        HasRotation = 2,
+        HasScale = 4
+    }
+    
     public class OdinNetworkReader
     {
         private byte[] _bytes;
@@ -49,11 +57,27 @@ namespace Odin.OdinNetworking
             return (OdinMessageType)ReadByte();
         }
 
-        public void ReadTransform(Transform transform)
+        public (Vector3, Quaternion, Vector3) ReadTransform()
         {
-            transform.localPosition = ReadVector3();
-            transform.localRotation = ReadQuaternion();
-            transform.localScale = ReadVector3();
+            var localPosition = Vector3.zero;
+            var localRotation = Quaternion.identity;
+            var localScale = Vector3.one;
+            
+            var flags = (OdinNetworkingFlags)ReadByte();
+            if ((flags & OdinNetworkingFlags.HasPosition) != 0)
+            {
+                localPosition = ReadVector3();    
+            }
+            if ((flags & OdinNetworkingFlags.HasRotation) != 0)
+            {
+                localRotation = ReadQuaternion();    
+            }
+            if ((flags & OdinNetworkingFlags.HasScale) != 0)
+            {
+                localScale = ReadVector3();    
+            }
+
+            return (localPosition, localRotation, localScale);
         }
 
         public int ReadInt()
