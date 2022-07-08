@@ -23,9 +23,14 @@ namespace Odin.OdinNetworking
         [SerializeField] private float SendInterval = 0.05f;
         
         private OdinNetworkWriter _lastUserData = null;
+        private OdinNetworkWriter _lastNetworkedObjectUpdate = null;
+        Dictionary<int, OdinNetworkWriter> _lastNetworkedObjectStates = new Dictionary<int, OdinNetworkWriter>();
         private float _lastSent;
 
         private Animator _animator;
+
+        private List<OdinNetworkedObject> _spawnedObjects = new List<OdinNetworkedObject>();
+        private int _objectId = 0;
         
         private class OdinSyncVarInfo
         {
@@ -93,9 +98,50 @@ namespace Odin.OdinNetworking
                 return;
             }
             
-            // Compile user data
+            // Wait for the next slot for sending data
             if (Time.time - _lastSent > SendInterval)
             {
+                // Sync networked objects
+                if (_spawnedObjects.Count > 0)
+                {
+                    List<OdinNetworkWriter> newObjectStates = new List<OdinNetworkWriter>();
+                    foreach (var networkedObject in _spawnedObjects)
+                    {
+                        OdinNetworkWriter writer = new OdinNetworkWriter();
+                        writer.Write(networkedObject.NetworkId);
+                        writer.Write(networkedObject.gameObject.transform);
+
+                        if (!_lastNetworkedObjectStates.ContainsKey(networkedObject.NetworkId))
+                        {
+                            newObjectStates.Add(writer);
+                            _lastNetworkedObjectStates[networkedObject.NetworkId] = writer;
+                        }
+                        else if (!writer.IsEqual(_lastNetworkedObjectStates[networkedObject.NetworkId]))
+                        {
+                            newObjectStates.Add(writer);
+                            _lastNetworkedObjectStates[networkedObject.NetworkId] = writer;
+                        }
+                    }
+                    
+                    OdinMessage message = new OdinMessage(OdinMessageType.UpdateNetworkedObject);
+                    message.Write(newObjectStates.Count);
+                    if (newObjectStates.Count > 0)
+                    {
+                        foreach (var objectState in newObjectStates)
+                        {
+                            message.Write(objectState);
+                        }
+
+                        if (!message.IsEqual(_lastNetworkedObjectUpdate))
+                        {
+                            Debug.Log($"Sending Network Update Message with Bytes: {message.Cursor}");
+                            OdinNetworkManager.Instance.SendMessage(message);
+                            _lastNetworkedObjectUpdate = message;
+                        }                        
+                    }
+                }
+                
+                // Compile user data
                 OdinNetworkWriter userData = new OdinNetworkWriter();
                 
                 // Update Transform
@@ -167,9 +213,9 @@ namespace Odin.OdinNetworking
             }
         }
 
-        public void MessageReceived(OdinNetworkReader reader)
+        public void MessageReceived(OdinNetworkIdentity sender, OdinNetworkReader reader)
         {
-            OdinMessageType messageType = (OdinMessageType)reader.ReadByte();
+            OdinMessageType messageType = reader.ReadMessageType();
 
             if (messageType == OdinMessageType.UpdateSyncVar)
             {
@@ -178,6 +224,29 @@ namespace Odin.OdinNetworking
 
                 OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
                 syncInfo.FieldInfo.SetValue(this, currentValue);
+            } 
+            else if (messageType == OdinMessageType.SpawnPrefab)
+            {
+                var prefabName = reader.ReadString();
+                var objectId = reader.ReadInt();
+                var position = reader.ReadVector3();
+                var rotation = reader.ReadQuaternion();
+                OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, objectId, position, rotation);
+            } 
+            else if (messageType == OdinMessageType.UpdateNetworkedObject)
+            {
+                int numberOfObjects = reader.ReadInt();
+                for (int i = 0; i < numberOfObjects; i++)
+                {
+                    var networkId = reader.ReadInt();
+                    var networkedObject = OdinNetworkManager.Instance.FindNetworkedObject(sender.Peer.Id, networkId);
+                    if (networkedObject)
+                    {
+                        networkedObject.TweenLocalPosition(reader.ReadVector3(), SendInterval);
+                        networkedObject.TweenLocalRotation(reader.ReadQuaternion().eulerAngles, SendInterval);
+                        networkedObject.TweenLocalScale(reader.ReadVector3(), SendInterval);
+                    }
+                }
             }
         }
 
@@ -242,6 +311,32 @@ namespace Odin.OdinNetworking
         public bool IsLocalPlayer()
         {
             return OdinNetworkManager.Instance.LocalPlayer == this;
+        }
+
+        public void Spawn(GameObject prefab, Vector3 position, Quaternion rotation)
+        {
+            Spawn(prefab.name, position, rotation);
+        }
+
+        public void Spawn(string prefabName, Vector3 position, Quaternion rotation)
+        {
+            var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, _objectId, position, rotation);
+            if (networkedObject == null)
+            {
+                Debug.LogWarning($"Could not spawn prefab {prefabName}");
+                return;
+            }
+            
+            _spawnedObjects.Add(networkedObject);
+
+            OdinMessage message = new OdinMessage(OdinMessageType.SpawnPrefab);
+            message.Write(prefabName);
+            message.Write(_objectId);
+            message.Write(position);
+            message.Write(rotation);
+            OdinNetworkManager.Instance.SendMessage(message, false);
+
+            _objectId++;
         }
     }
 }

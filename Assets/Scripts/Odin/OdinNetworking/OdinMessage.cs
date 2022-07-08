@@ -3,7 +3,9 @@ namespace Odin.OdinNetworking
     // Maximum number of 255 items, as it's stored as a byte in the message stream!
     public enum OdinMessageType
     {
-        UpdateSyncVar
+        UpdateSyncVar,
+        SpawnPrefab,
+        UpdateNetworkedObject
     }
 
     // Maximum number of 255 items, as it's stored as a byte in the message stream!
