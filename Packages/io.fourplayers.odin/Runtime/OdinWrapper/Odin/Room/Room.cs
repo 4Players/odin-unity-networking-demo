@@ -294,8 +294,8 @@ namespace OdinNative.Odin.Room
         public bool SendMessage(ulong[] peerIdList, byte[] data)
         {
             if(Test(IsJoined, $"Odin: {ConnectionState.Key} {ConnectionState.Value}")) return false;
-            if(Test(peerIdList != null && peerIdList.Count() <= 0, $"Odin: peer list is empty")) return false;
-            if(Test(data != null && data.Length <= 0, $"Odin: data is empty")) return false;
+            if(Test(peerIdList != null || peerIdList.Count() <= 0, $"Odin: peer list is empty")) return false;
+            if(Test(data != null || data.Length <= 0, $"Odin: data is empty")) return false;
             return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, (ulong)peerIdList.Length, data, (ulong)data.Length) == Utility.OK;
         }
 
@@ -309,9 +309,14 @@ namespace OdinNative.Odin.Room
         public async Task<bool> SendMessageAsync(ulong[] peerIdList, byte[] data)
         {
             if (Test(IsJoined, $"Odin: {ConnectionState.Key} {ConnectionState.Value}")) return false;
-            if (Test(peerIdList != null && peerIdList.Count() <= 0, $"Odin: peer list is empty")) return false;
-            if (Test(data != null && data.Length <= 0, $"Odin: data is empty")) return false;
+            if (Test(data != null && data.Length > 0, $"Odin: data is empty")) return false;
 
+            // Check if peer list is not empty
+            if (!(peerIdList != null && peerIdList.Length > 0))
+            {
+                return true;
+            }
+            
             return await Task.Run(() => {
                 return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, (ulong)peerIdList.Length, data, (ulong)data.Length) == Utility.OK;
             });
