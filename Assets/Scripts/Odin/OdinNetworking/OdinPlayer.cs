@@ -22,12 +22,16 @@ namespace Odin.OdinNetworking
         private StarterAssetsInputs _input;
         private CharacterController _characterController;
         private PlayerInput _playerInput;
+        private ThirdPersonController _thirdPersonController;
 
+        private float _lastSphereSpawn = 0;
+        
         private void Awake()
         {
             _input = GetComponent<StarterAssetsInputs>();
             _characterController = GetComponent<CharacterController>();
             _playerInput = GetComponent<PlayerInput>();   
+            _thirdPersonController = GetComponent<ThirdPersonController>();   
         }
 
         // Start is called before the first frame update
@@ -48,8 +52,18 @@ namespace Odin.OdinNetworking
             {
                 return;
             }
+
+            if (_input.jump)
+            {
+                if (Time.time - _lastSphereSpawn > 1)
+                {
+                    Vector3 position = transform.position + (Vector3.up * 1.5f);
+                    Spawn("Sphere", position, Quaternion.identity);
+                    _lastSphereSpawn = Time.time;
+                }
+            }
             
-            transform.localPosition += new Vector3(_input.move.x * Time.deltaTime * movementSpeed, 0, _input.move.y * Time.deltaTime * movementSpeed);
+            //transform.localPosition += new Vector3(_input.move.x * Time.deltaTime * movementSpeed, 0, _input.move.y * Time.deltaTime * movementSpeed);
         }
 
         public override void OnStartLocalClient()
@@ -58,6 +72,7 @@ namespace Odin.OdinNetworking
 
             _characterController.enabled = true;
             _playerInput.enabled = true;
+            _thirdPersonController.enabled = true;
         }
 
 
