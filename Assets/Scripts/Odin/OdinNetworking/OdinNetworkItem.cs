@@ -50,21 +50,34 @@ public class OdinNetworkItem : MonoBehaviour
             for (byte i = 0; i < numberOfSyncVars; i++)
             {
                 var syncVarName = reader.ReadString();
-                var currentValue = reader.ReadObject();
+                var receivedValue = reader.ReadObject();
 
                 if (!_syncVars.ContainsKey(syncVarName))
                 {
-                    Debug.Log("SYNC VAR NOT AVAILABLE " + syncVarName);
-                }
-                OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
-                if (syncInfo != null)
-                {
-                    syncInfo.FieldInfo.SetValue(this, currentValue);    
+                    Debug.LogError($"Sync variable {syncVarName} not available in object {gameObject.name}");
                 }
                 else
                 {
-                    Debug.LogError($"Could not find Syncvar with name {syncVarName}");
-                }                    
+                    OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
+                    if (syncInfo != null)
+                    {
+                        var currentValue = syncInfo.FieldInfo.GetValue(this);
+                        if (!currentValue.Equals(receivedValue))
+                        {
+                            syncInfo.FieldInfo.SetValue(this, receivedValue);
+
+                            if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
+                            {
+                                var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook);
+                                if (hookMethod != null)
+                                {
+                                    hookMethod.Invoke(this, new[]{currentValue, receivedValue});
+                                }
+                            }
+                        }
+                    }
+                }
+                                    
             }
         }
     }
