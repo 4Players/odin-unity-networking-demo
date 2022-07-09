@@ -6,7 +6,7 @@ using UnityEngine;
 
 public class Sphere : OdinNetworkedObject
 {
-    [OdinSyncVar] public int Color = 0;
+    [OdinSyncVar(hook=nameof(ColorChanged))] public int Color = 0;
     public List<Material> materials = new List<Material>();
 
     private void Start()
@@ -17,6 +17,11 @@ public class Sphere : OdinNetworkedObject
     private void ChangeColor()
     {
         Color = 1;
+    }
+
+    public void ColorChanged(int oldColor, int newColor)
+    {
+        Debug.Log($"COLOR CHANGED FROM {oldColor} TO {newColor}");
     }
 
     private void Update()
