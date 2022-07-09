@@ -304,6 +304,8 @@ namespace Odin.OdinNetworking
             message.Write(position);
             message.Write(rotation);
             OdinNetworkManager.Instance.SendMessage(message, false);
+            
+            _objectId++;
         }
         
 
