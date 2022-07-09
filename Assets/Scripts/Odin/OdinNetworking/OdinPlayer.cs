@@ -83,7 +83,7 @@ namespace Odin.OdinNetworking
 
         public void OnNameChanged(string oldValue, string newValue)
         {
-            
+            Debug.Log($"NAME CHANGED FROM {oldValue} TO {newValue}");
         }
     }
 }
