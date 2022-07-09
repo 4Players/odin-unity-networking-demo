@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.IO.Compression;
 using System.Text;
 using UnityEngine;
 
@@ -15,12 +17,32 @@ namespace Odin.OdinNetworking
     public class OdinNetworkReader
     {
         private byte[] _bytes;
-        private int _cursor = 0;
+        private int _cursor = 0; // First byte is compression flag
         
         public OdinNetworkReader(byte[] bytes)
         {
-            _bytes = bytes;
-            _cursor = 0;
+            _bytes = Decompress(bytes);
+        }
+        
+        private byte[] Decompress(byte[] data)
+        {
+            using (var compressedStream = new MemoryStream(data))
+            using (var zipStream = new GZipStream(compressedStream, CompressionMode.Decompress))
+            using (var resultStream = new MemoryStream())
+            {
+                zipStream.CopyTo(resultStream);
+                return resultStream.ToArray();
+            }
+        }
+
+        public byte ReadByteAt(int index)
+        {
+            if (index < 0 || index >= _bytes.Length)
+            {
+                return 0;
+            }
+            
+            return _bytes[index];
         }
 
         public byte ReadByte()

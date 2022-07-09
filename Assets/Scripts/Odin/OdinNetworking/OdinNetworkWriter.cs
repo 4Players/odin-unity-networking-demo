@@ -1,4 +1,6 @@
 using System;
+using System.IO;
+using System.IO.Compression;
 using System.Text;
 using OdinNative.Odin;
 using UnityEngine;
@@ -207,12 +209,25 @@ namespace Odin.OdinNetworking
                 Debug.LogWarning("Could not write object as the type is unknown");
             }
         }
-
+        
+        private byte[] Compress(byte[] data)
+        {
+            using (var compressedStream = new MemoryStream())
+            using (var zipStream = new GZipStream(compressedStream, CompressionMode.Compress))
+            {
+                zipStream.Write(data, 0, data.Length);
+                zipStream.Close();
+                return compressedStream.ToArray();
+            }
+        }
+        
         public byte[] ToBytes()
         {
             var finalBytes = new byte[Cursor];
             Buffer.BlockCopy(_bytes, 0, finalBytes, 0, Cursor);
-            return finalBytes;
+            var compressedBytes = Compress(finalBytes);
+            Debug.Log($"Compressed data {compressedBytes.Length} vs. uncompressed {finalBytes.Length}, {Mathf.Round(((float)compressedBytes.Length / (float)finalBytes.Length)*100f)}%");
+            return compressedBytes;
         }
 
         public bool IsEqual(OdinNetworkWriter writer)
