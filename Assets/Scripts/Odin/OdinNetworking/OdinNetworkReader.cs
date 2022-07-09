@@ -21,7 +21,19 @@ namespace Odin.OdinNetworking
         
         public OdinNetworkReader(byte[] bytes)
         {
-            _bytes = Decompress(bytes);
+            var firstByte = bytes[0];
+            if (Convert.ToBoolean(firstByte))
+            {
+                // Compressed Data
+                var compressedBytes = new byte[bytes.Length - 1];
+                Buffer.BlockCopy(bytes, 1, compressedBytes, 0, compressedBytes.Length);
+                _bytes = Decompress(compressedBytes);
+            }
+            else
+            {
+                _bytes = bytes;
+                _cursor = 1;
+            }
         }
         
         private byte[] Decompress(byte[] data)

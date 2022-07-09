@@ -220,14 +220,42 @@ namespace Odin.OdinNetworking
                 return compressedStream.ToArray();
             }
         }
-        
-        public byte[] ToBytes()
+
+        private byte[] GetUncompressedBytes()
         {
             var finalBytes = new byte[Cursor];
             Buffer.BlockCopy(_bytes, 0, finalBytes, 0, Cursor);
+            return finalBytes;
+        }
+        
+        private byte[] GetCompressedBytes()
+        {
+            var finalBytes = GetUncompressedBytes();
             var compressedBytes = Compress(finalBytes);
             Debug.Log($"Compressed data {compressedBytes.Length} vs. uncompressed {finalBytes.Length}, {Mathf.Round(((float)compressedBytes.Length / (float)finalBytes.Length)*100f)}%");
             return compressedBytes;
+        }
+
+        private byte[] PackageBytes(byte[] bytes, bool compressed)
+        {
+            var finalBytes = new byte[bytes.Length + 1];
+            finalBytes[0] = Convert.ToByte(compressed);
+            Buffer.BlockCopy(bytes, 0, finalBytes, 1, bytes.Length);
+            return finalBytes;
+        }
+        
+        public byte[] ToBytes()
+        {
+            if (Cursor < 100)
+            {
+                var bytes = GetUncompressedBytes();
+                return PackageBytes(bytes, false);
+            }
+            else
+            {
+                var bytes = GetCompressedBytes();
+                return PackageBytes(bytes, true);
+            }
         }
 
         public bool IsEqual(OdinNetworkWriter writer)
