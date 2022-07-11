@@ -64,20 +64,25 @@ public class OdinNetworkItem : MonoBehaviour
                         var currentValue = syncInfo.FieldInfo.GetValue(this);
                         if (!currentValue.Equals(receivedValue))
                         {
-                            syncInfo.FieldInfo.SetValue(this, receivedValue);
-
-                            if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
-                            {
-                                var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook);
-                                if (hookMethod != null)
-                                {
-                                    hookMethod.Invoke(this, new[]{currentValue, receivedValue});
-                                }
-                            }
+                            OnSyncVarChanged(syncInfo, currentValue, receivedValue);
                         }
                     }
                 }
                                     
+            }
+        }
+    }
+
+    private void OnSyncVarChanged(OdinSyncVarInfo syncInfo, object oldValue, object newValue)
+    {
+        syncInfo.FieldInfo.SetValue(this, newValue);
+
+        if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
+        {
+            var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook);
+            if (hookMethod != null)
+            {
+                hookMethod.Invoke(this, new[]{oldValue, newValue});
             }
         }
     }
@@ -95,6 +100,12 @@ public class OdinNetworkItem : MonoBehaviour
                 //Debug.Log($"Value for SyncVar {key} changed. Old value: {syncInfo.LastValue}, new Value: {currentValue}");
                         
                 dirtySyncVars[syncInfo.FieldInfo.Name] = currentValue;
+                
+                if (!currentValue.Equals(syncInfo.LastValue))
+                {
+                    OnSyncVarChanged(syncInfo, syncInfo.LastValue, currentValue);
+                }
+                
                 syncInfo.LastValue = currentValue;
                 numberOfDirtySyncVars++;
             }
