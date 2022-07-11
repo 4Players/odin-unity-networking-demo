@@ -1442,6 +1442,11 @@ PrefabInstance:
         type: 3}
     - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
         type: 3}
+      propertyPath: handleMediaEvents
+      value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
+        type: 3}
       propertyPath: playerSpawnMethod
       value: 0
       objectReference: {fileID: 0}

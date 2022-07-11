@@ -1,4 +1,5 @@
 using System.Linq;
+using OdinNative.Odin.Room;
 using OdinNetworking;
 using StarterAssets;
 using TMPro;
@@ -12,6 +13,8 @@ namespace Odin.OdinNetworking
         [Header("Player Settings")]
         
         public TextMeshPro playerName;
+
+        public Transform mouthGameObject;
 
         [OdinSyncVar(hook = nameof(OnNameChanged))]
         public string Name;
@@ -40,6 +43,11 @@ namespace Odin.OdinNetworking
             Debug.Log($"Added player with peer Id: {Peer.Id}");
 
             Name = $"Player_{Peer.Id}";
+        }
+
+        public override Transform GetPlaybackComponentContainer(Room room)
+        {
+            return mouthGameObject != null ? mouthGameObject : gameObject.transform;
         }
 
         // Update is called once per frame

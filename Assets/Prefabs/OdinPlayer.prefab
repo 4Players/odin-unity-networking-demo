@@ -254,6 +254,11 @@ PrefabInstance:
       propertyPath: m_Enabled
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: 6395627992722424102, guid: 64dce48905ffd9b4293e595fa6941544,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 1
+      objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 64dce48905ffd9b4293e595fa6941544, type: 3}
 --- !u!4 &4816561318979826657 stripped
@@ -281,8 +286,16 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   SyncTransform: 1
+  syncChilds: []
   SyncAnimator: 1
   SendInterval: 0.1
   playerName: {fileID: 1358801394037747888}
+  mouthGameObject: {fileID: 7281412867173429677}
   Name: 
   movementSpeed: 2
+--- !u!4 &7281412867173429677 stripped
+Transform:
+  m_CorrespondingSourceObject: {fileID: 1287142318755369511, guid: 64dce48905ffd9b4293e595fa6941544,
+    type: 3}
+  m_PrefabInstance: {fileID: 8417262278547465098}
+  m_PrefabAsset: {fileID: 0}

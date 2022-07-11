@@ -323,5 +323,40 @@ namespace Odin.OdinNetworking
             SpawnedObjects.Remove(networkedObject);
             DestroyImmediate(networkedObject.gameObject);
         }
+
+        public virtual Transform GetPlaybackComponentContainer(Room room)
+        {
+            return gameObject.transform;
+        }
+
+        public virtual void OnPlaybackComponentCreated(PlaybackComponent playbackComponent)
+        {
+            // Activate 3D spatial audio
+            playbackComponent.PlaybackSource.spatialBlend = 1.0f;
+        }
+
+        public virtual void OnPlaybackComponentWillBeDestroyed(PlaybackComponent playbackComponent)
+        {
+            
+        }
+
+        public virtual void OnMediaAdded(Room room, long mediaId)
+        {
+            var mediaContainer = GetPlaybackComponentContainer(room);
+            var playbackComponent = OdinHandler.Instance.AddPlaybackComponent(mediaContainer.gameObject, room.Config.Name, Peer.Id, mediaId);
+            OnPlaybackComponentCreated(playbackComponent);   
+        }
+        
+        public virtual void OnMediaRemoved(Room room, long mediaStreamId)
+        {
+            foreach (var playbackComponent in GetComponentsInChildren<PlaybackComponent>().ToArray())
+            {
+                if (playbackComponent.MediaStreamId == mediaStreamId)
+                {
+                    OnPlaybackComponentWillBeDestroyed(playbackComponent);
+                    Destroy(playbackComponent);
+                }
+            }
+        }
     }
 }

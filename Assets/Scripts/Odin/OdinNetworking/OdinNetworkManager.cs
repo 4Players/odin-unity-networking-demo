@@ -46,6 +46,10 @@ namespace Odin.OdinNetworking
         [Header("Object spawning")]
         [Tooltip("Add prefabs that are spawnable in the network")]
         [SerializeField] private List<OdinNetworkedObject> spawnablePrefabs = new List<OdinNetworkedObject>();
+        
+        [Header("Voice Settings")] [SerializeField]
+        [Tooltip("If enabled incoming media will be handled automatically and a PlaybackComponent will be attached to this game object.")]
+        private bool handleMediaEvents = true;
 
         private Room _room;
         public OdinPlayer LocalPlayer { get; private set; }
@@ -78,7 +82,13 @@ namespace Odin.OdinNetworking
             OdinHandler.Instance.OnPeerLeft.AddListener(OnPeerLeft);
             OdinHandler.Instance.OnMessageReceived.AddListener(OnMessageReceived);
             OdinHandler.Instance.OnPeerUserDataChanged.AddListener(OnPeerUserDataUpdated);
-            
+
+            if (handleMediaEvents)
+            {
+                OdinHandler.Instance.OnMediaAdded.AddListener(OnMediaAdded);
+                OdinHandler.Instance.OnMediaRemoved.AddListener(OnMediaRemoved);                
+            }
+
             OdinHandler.Instance.JoinRoom(roomName);
         }
 
@@ -89,13 +99,38 @@ namespace Odin.OdinNetworking
             OdinHandler.Instance.OnPeerLeft.RemoveListener(OnPeerLeft);
             OdinHandler.Instance.OnMessageReceived.RemoveListener(OnMessageReceived);
             OdinHandler.Instance.OnPeerUserDataChanged.RemoveListener(OnPeerUserDataUpdated);
-            
+
+            if (handleMediaEvents)
+            {
+                OdinHandler.Instance.OnMediaAdded.RemoveListener(OnMediaAdded);
+                OdinHandler.Instance.OnMediaRemoved.RemoveListener(OnMediaRemoved);                
+            }
+
             startPositionIndex = 0;
         }
 
         void Update()
         {
 
+        }
+
+        private void OnMediaAdded(object sender, MediaAddedEventArgs eventArgs)
+        {
+            var room = sender as Room;
+            if (room == null)
+            {
+                Debug.LogError($"OnMediaAdded sent not from a room: {sender.ToString()}");
+                return;
+            }
+            
+            var player = FindNetworkIdentityWithPeerId(eventArgs.Peer.Id);
+            player.OnMediaAdded(room, eventArgs.Media.Id);
+        }
+
+        private void OnMediaRemoved(object sender, MediaRemovedEventArgs eventArgs)
+        {
+            var player = FindNetworkIdentityWithPeerId(eventArgs.Peer.Id);
+            player.OnMediaRemoved(_room, eventArgs.MediaStreamId);
         }
 
         private void OnPeerUserDataUpdated(object sender, PeerUserDataChangedEventArgs eventArgs)
