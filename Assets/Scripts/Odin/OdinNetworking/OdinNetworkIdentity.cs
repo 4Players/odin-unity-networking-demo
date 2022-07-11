@@ -29,7 +29,7 @@ namespace Odin.OdinNetworking
 
         private Animator _animator;
 
-        private List<OdinNetworkedObject> _spawnedObjects = new List<OdinNetworkedObject>();
+        public List<OdinNetworkedObject> SpawnedObjects { get; } = new List<OdinNetworkedObject>();
         private byte _objectId = 0;
 
         public override void OnStartClient()
@@ -141,8 +141,8 @@ namespace Odin.OdinNetworking
                 WriteSyncVars(userData);
                 
                 // Write Networked objects
-                userData.Write((byte)_spawnedObjects.Count);
-                foreach (var networkedObject in _spawnedObjects)
+                userData.Write((byte)SpawnedObjects.Count);
+                foreach (var networkedObject in SpawnedObjects)
                 {
                     networkedObject.SerializeHeader(userData);
                     networkedObject.SerializeBody(userData);
@@ -277,7 +277,7 @@ namespace Odin.OdinNetworking
                 return;
             }
             
-            _spawnedObjects.Add(networkedObject);
+            SpawnedObjects.Add(networkedObject);
 
             /*OdinMessage message = new OdinMessage(OdinMessageType.SpawnPrefab);
             message.Write(networkedObject.PrefabId);
@@ -317,7 +317,7 @@ namespace Odin.OdinNetworking
                 return;
             }
 
-            _spawnedObjects.Remove(networkedObject);
+            SpawnedObjects.Remove(networkedObject);
             DestroyImmediate(networkedObject.gameObject);
         }
     }
