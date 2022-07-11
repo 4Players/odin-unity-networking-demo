@@ -58,47 +58,6 @@ namespace Odin.OdinNetworking
             // Wait for the next slot for sending data
             if (Time.time - _lastSent > SendInterval)
             {
-                // Sync networked objects
-                /*
-                if (_spawnedObjects.Count > 0)
-                {
-                    List<OdinNetworkWriter> newObjectStates = new List<OdinNetworkWriter>();
-                    foreach (var networkedObject in _spawnedObjects)
-                    {
-                        OdinNetworkWriter writer = new OdinNetworkWriter();
-                        writer.Write(networkedObject.ObjectId);
-                        writer.Write(networkedObject.gameObject.transform);
-
-                        if (!_lastNetworkedObjectStates.ContainsKey(networkedObject.ObjectId))
-                        {
-                            newObjectStates.Add(writer);
-                            _lastNetworkedObjectStates[networkedObject.ObjectId] = writer;
-                        }
-                        else if (!writer.IsEqual(_lastNetworkedObjectStates[networkedObject.ObjectId]))
-                        {
-                            newObjectStates.Add(writer);
-                            _lastNetworkedObjectStates[networkedObject.ObjectId] = writer;
-                        }
-                    }
-                    
-                    OdinMessage message = new OdinMessage(OdinMessageType.UpdateNetworkedObject);
-                    message.Write((byte)newObjectStates.Count);
-                    if (newObjectStates.Count > 0)
-                    {
-                        foreach (var objectState in newObjectStates)
-                        {
-                            message.Write(objectState);
-                        }
-
-                        if (!message.IsEqual(_lastNetworkedObjectUpdate))
-                        {
-                            Debug.Log($"Sending Network Update Message with Bytes: {message.Cursor}");
-                            OdinNetworkManager.Instance.SendMessage(message);
-                            _lastNetworkedObjectUpdate = message;
-                        }                        
-                    }
-                }*/
-                
                 // Compile user data
                 OdinNetworkWriter userData = new OdinNetworkWriter();
                 
