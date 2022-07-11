@@ -1,9 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using OdinNative.Odin;
 using OdinNative.Odin.Peer;
 using OdinNative.Odin.Room;
-using RSG;
 using Unity.Collections;
 using Unity.Jobs;
 using UnityEngine;
@@ -29,14 +29,21 @@ namespace Odin.OdinNetworking
         public Room room;
     }
     
+    public enum OdinPlayerSpawnMethod { Random, RoundRobin }
+    
     public class OdinNetworkManager : MonoBehaviour
     {
         [Tooltip("The name of the room where players join per default.")]
         [SerializeField] private string roomName = "World";
         
+        [Header("Player spawning")]
         [Tooltip("This is the player prefab that will be instantiated for each player connecting to the same room")]
         [SerializeField] private OdinPlayer playerPrefab;
+        
+        [Tooltip("Round Robin or Random order of Start Position selection")]
+        public OdinPlayerSpawnMethod playerSpawnMethod;
 
+        [Header("Object spawning")]
         [Tooltip("Add prefabs that are spawnable in the network")]
         [SerializeField] private List<OdinNetworkedObject> spawnablePrefabs = new List<OdinNetworkedObject>();
 
@@ -45,6 +52,11 @@ namespace Odin.OdinNetworking
         
         public static OdinNetworkManager Instance { get; private set; }
         
+        /// <summary>List of transforms populated by NetworkStartPositions</summary>
+        public static List<Transform> startPositions = new List<Transform>();
+        public static int startPositionIndex;
+        
+
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -77,6 +89,8 @@ namespace Odin.OdinNetworking
             OdinHandler.Instance.OnPeerLeft.RemoveListener(OnPeerLeft);
             OdinHandler.Instance.OnMessageReceived.RemoveListener(OnMessageReceived);
             OdinHandler.Instance.OnPeerUserDataChanged.RemoveListener(OnPeerUserDataUpdated);
+            
+            startPositionIndex = 0;
         }
 
         void Update()
@@ -163,7 +177,8 @@ namespace Odin.OdinNetworking
         
         public virtual OdinPlayer AddPlayer(Peer peer, OdinPlayer prefab)
         {
-            OdinPlayer player = Instantiate(prefab);
+            Transform startPos = GetStartPosition();
+            OdinPlayer player = startPos != null ? Instantiate(prefab, startPos.position, startPos.rotation) : Instantiate(prefab);
             player.Peer = peer;
             player.OnAwakeClient();
             return player;
@@ -283,6 +298,44 @@ namespace Odin.OdinNetworking
             
             Debug.LogError("Could not spawn prefab as its not in the list. Add the prefab to the OdinNetworkManager SpawnablePrefabs list");
             return null;
+        }
+
+        public static void RegisterSpawnPosition(Transform start)
+        {
+            // Debug.Log($"RegisterStartPosition: {start.gameObject.name} {start.position}");
+            startPositions.Add(start);
+
+            // reorder the list so that round-robin spawning uses the start positions
+            // in hierarchy order.  This assumes all objects with NetworkStartPosition
+            // component are siblings, either in the scene root or together as children
+            // under a single parent in the scene.
+            startPositions = startPositions.OrderBy(transform => transform.GetSiblingIndex()).ToList();
+        }
+
+        public static void UnregisterSpawnPosition(Transform start)
+        {
+            startPositions.Remove(start);
+        }
+        
+        /// <summary>Get the next NetworkStartPosition based on the selected PlayerSpawnMethod.</summary>
+        public Transform GetStartPosition()
+        {
+            // first remove any dead transforms
+            startPositions.RemoveAll(t => t == null);
+
+            if (startPositions.Count == 0)
+                return null;
+
+            if (playerSpawnMethod == OdinPlayerSpawnMethod.Random)
+            {
+                return startPositions[UnityEngine.Random.Range(0, startPositions.Count)];
+            }
+            else
+            {
+                Transform startPosition = startPositions[startPositionIndex];
+                startPositionIndex = (startPositionIndex + 1) % startPositions.Count;
+                return startPosition;
+            }
         }
     }
 }
