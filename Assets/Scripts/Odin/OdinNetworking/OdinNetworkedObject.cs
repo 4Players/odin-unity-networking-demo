@@ -16,6 +16,9 @@ public class OdinNetworkedObject : OdinNetworkItem
     [HideInInspector]
     public byte PrefabId;
 
+    [HideInInspector] 
+    public bool IsUpdated = false;
+    
     [Tooltip("This defines the lifetime of this object in seconds. If zero, it needs to be destroyed manually.")]
     public float LifeTime = 0;
 

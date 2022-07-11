@@ -1,9 +1,6 @@
-using System;
 using System.Collections.Generic;
-using System.Reflection;
 using ElRaccoone.Tweens;
 using OdinNative.Odin.Peer;
-using OdinNetworking;
 using UnityEngine;
 
 namespace Odin.OdinNetworking
@@ -241,21 +238,61 @@ namespace Odin.OdinNetworking
             ReadSyncVars(reader);
             
             // Networked Objects
+            PreparedSpawnedObjectsForUpdate();
+            
             var numberOfNetworkedObjects = reader.ReadByte();
             for (var i = 0; i < numberOfNetworkedObjects; i++)
             {
                 var (objectId, prefabId) = OdinNetworkedObject.DeserializeHeader(reader);
-                var networkedObject = OdinNetworkManager.Instance.FindNetworkedObject(Peer.Id, objectId);
+                var networkedObject = FindNetworkedObject(objectId);
                 if (networkedObject)
                 {
                     networkedObject.UpdateFromReader(reader, true);
+                    networkedObject.IsUpdated = true;
                 }
                 else
                 {
                     networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, objectId, Vector3.zero, Quaternion.identity);
                     networkedObject.UpdateFromReader(reader, false);
+                    networkedObject.IsUpdated = true;
+                    SpawnedObjects.Add(networkedObject);
                 }
             }
+            
+            // Walk through all spawned objects and remove those that were not in the update list
+            DestroyDeprecatedSpawnedObjects();
+        }
+
+        private void DestroyDeprecatedSpawnedObjects()
+        {
+            foreach (var spawnedObject in SpawnedObjects.ToArray())
+            {
+                if (spawnedObject.IsUpdated == false)
+                {
+                    DestroyNetworkedObject(spawnedObject);
+                }
+            }
+        }
+
+        private void PreparedSpawnedObjectsForUpdate()
+        {
+            foreach (var spawnedObject in SpawnedObjects)
+            {
+                spawnedObject.IsUpdated = false;
+            }
+        }
+
+        public OdinNetworkedObject FindNetworkedObject(byte objectId)
+        {
+            foreach (var networkedObject in SpawnedObjects)
+            {
+                if (networkedObject.ObjectId == objectId)
+                {
+                    return networkedObject;
+                }
+            }
+
+            return null;
         }
         
         public bool IsLocalPlayer()
@@ -266,6 +303,21 @@ namespace Odin.OdinNetworking
         public void SpawnManagedNetworkedObject(GameObject prefab, Vector3 position, Quaternion rotation)
         {
             SpawnManagedNetworkedObject(prefab.name, position, rotation);
+        }
+        
+        
+        
+        public void SpawnManagedNetworkedObject(byte prefabId, Vector3 position, Quaternion rotation)
+        {
+            var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, _objectId, position, rotation);
+            if (networkedObject == null)
+            {
+                Debug.LogWarning($"Could not spawn prefab with id {prefabId}");
+                return;
+            }
+            
+            SpawnedObjects.Add(networkedObject);
+            _objectId++;
         }
 
         public void SpawnManagedNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
@@ -278,14 +330,6 @@ namespace Odin.OdinNetworking
             }
             
             SpawnedObjects.Add(networkedObject);
-
-            /*OdinMessage message = new OdinMessage(OdinMessageType.SpawnPrefab);
-            message.Write(networkedObject.PrefabId);
-            message.Write(_objectId);
-            message.Write(position);
-            message.Write(rotation);
-            OdinNetworkManager.Instance.SendMessage(message, false);*/
-
             _objectId++;
         }
 

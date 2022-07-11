@@ -1,5 +1,4 @@
-using System;
-using OdinNative.Odin.Peer;
+using System.Linq;
 using OdinNetworking;
 using StarterAssets;
 using TMPro;
@@ -56,6 +55,14 @@ namespace Odin.OdinNetworking
             if (Keyboard.current.eKey.wasReleasedThisFrame)
             {
                 SpawnNetworkedObject("Flower", transform.position, Quaternion.identity);
+            }
+
+            if (Keyboard.current.rKey.wasReleasedThisFrame)
+            {
+                if (SpawnedObjects.Count > 0)
+                {
+                    DestroyNetworkedObject(SpawnedObjects.Last());
+                }
             }
 
             if (_input.jump)
