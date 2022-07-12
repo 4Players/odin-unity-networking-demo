@@ -27,7 +27,10 @@ namespace Odin.OdinNetworking
         private ThirdPersonController _thirdPersonController;
 
         private float _lastSphereSpawn = 0;
-        
+
+        private Vector2 movement = new Vector2(0, 0);
+        private float _nextMovementChange = 0;
+
         private void Awake()
         {
             _input = GetComponent<StarterAssetsInputs>();
@@ -59,6 +62,13 @@ namespace Odin.OdinNetworking
             {
                 return;
             }
+
+            /*if (Time.time > _nextMovementChange)
+            {
+                _input.MoveInput(new Vector2(Random.Range(-1.0f,1.0f),Random.Range(-1.0f,1.0f)));
+                _nextMovementChange = Time.time + Random.Range(1.0f, 5.0f);
+            }*/
+            
 
             if (Keyboard.current.eKey.wasReleasedThisFrame)
             {
