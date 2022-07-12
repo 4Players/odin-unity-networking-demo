@@ -280,6 +280,11 @@ namespace Odin.OdinNetworking
 
             return true;
         }
+        
+        public bool IsEmpty()
+        {
+            return Cursor == 0;
+        }
 
         public override string ToString()
         {
