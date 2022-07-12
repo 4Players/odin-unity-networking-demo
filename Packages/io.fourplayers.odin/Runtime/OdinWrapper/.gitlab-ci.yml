@@ -1,0 +1,31 @@
+variables:
+  WRAPPER_VERSION: 1.0.0.0
+  API_VERSION: 0.0.1
+
+stages:
+  - package
+  - trigger-build
+
+package:source:
+  stage: package
+  except: [tags]
+  only: [master]
+  image: $CI_REGISTRY/odin/builders/ci-helper
+  variables:
+    GIT_SUBMODULE_STRATEGY: recursive
+  script:
+    - export API_VERSION=$(grep OdinVersion ./Core/Imports/NativeBindings.cs | awk -F'"' '{print $2}')
+    - rm -rf .git .gitlab-ci.yml
+  artifacts:
+    name: "odinwrapper_${WRAPPER_VERSION}_${API_VERSION}"
+    paths:
+      - ./
+
+trigger-build:
+  stage: trigger-build
+  except: [tags]
+  only: [master]
+  image: $CI_REGISTRY/odin/builders/ci-helper
+  script:
+    - export API_VERSION=$(grep OdinVersion ./Core/Imports/NativeBindings.cs | awk -F'"' '{print $2}')
+    - curl -X POST -F token=$CI_JOB_TOKEN -F ref=build -F variables[WrapperVersion]=$WRAPPER_VERSION -F variables[AkiVersion]=$API_VERSION https://gitlab.4players.de/api/v4/projects/298/trigger/pipeline

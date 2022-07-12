@@ -108,6 +108,9 @@ namespace OdinNative.Unity.Audio
         /// creation if <see cref="OverrideSampleRate"/> is false</remarks>
         public MediaSampleRate SampleRate;
 
+        private AudioClip SpatialClip;
+        private float SpatialClipSilenceScale = 1000f;
+
         public bool HasActivity
         {
             get
@@ -126,14 +129,15 @@ namespace OdinNative.Unity.Audio
                     .Where(s => s.clip == null)
                     .FirstOrDefault() ?? gameObject.AddComponent<AudioSource>();
 
+            // Should be removed if Unity Issue 819365,1246661 is resolved
+            SpatialClip = AudioClip.Create("spatialClip", 1, 1, AudioSettings.outputSampleRate, false);
+            SpatialClip.SetData(new float[] { 1f / SpatialClipSilenceScale }, 0);
+            PlaybackSource.clip = SpatialClip;
             PlaybackSource.loop = true;
         }
 
         void OnEnable()
         {
-            if (PlaybackSource.isPlaying == false)
-                PlaybackSource.Play();
-
             if (OverrideSampleRate)
                 AudioSettings.outputSampleRate = (int)SampleRate;
 
@@ -149,13 +153,19 @@ namespace OdinNative.Unity.Audio
                 AudioSettings.GetDSPBufferSize(out int dspBufferSize, out int dspBufferCount);
                 ResamplerCapacity = dspBufferSize * ((uint)OdinDefaults.RemoteSampleRate / UnitySampleRate) / (int)AudioSettings.speakerMode;
             }
+
+            if (PlaybackSource.isPlaying == false)
+                PlaybackSource.Play();
         }
 
         void Reset()
         {
+            RedirectPlaybackAudio = true;
             OverrideSampleRate = false;
             SampleRate = OdinHandler.Config.RemoteSampleRate;
             UnitySampleRate = AudioSettings.outputSampleRate;
+            ReadBuffer = null;
+            ResampleBuffer = null;
         }
 
         void OnAudioFilterRead(float[] data, int channels)
@@ -183,36 +193,32 @@ namespace OdinNative.Unity.Audio
             else
                 SetData(ReadBuffer, 0, (int)read);
 
-            int SetData(float[] buffer, int offset, int count)
+            void SetData(float[] buffer, int offset, int count)
             {
                 int i = 0;
-                switch (channels)
-                {
-                    case 1:
-                        foreach (float sample in buffer.Skip(offset).Take(count))
-                            data[i++] = sample;
-                        break;
-                    case 2:
-                        foreach (float sample in buffer.Skip(offset).Take(count))
-                        {
-                            data[i] = sample;
-                            data[i + 1] = sample;
-                            i += channels;
-                        }
-                        break;
-                    default:
-                        Debug.LogException(new NotSupportedException($"channels {channels} is currently not supported"));
-                        break;
-                }
-                return i;
+                var samples = buffer.Skip(offset).Take(count);
+                if (channels > 1)
+                    foreach (float sample in samples)
+                    {
+                        float scaledSample = sample * SpatialClipSilenceScale;
+                        data[i] *= scaledSample;
+                        data[i + 1] *= scaledSample;
+                        i += channels;
+                    }
+                else if (channels > 0)
+                    foreach (float sample in samples)
+                        data[i++] *= sample * SpatialClipSilenceScale;
+                else
+                    Debug.LogException(new NotSupportedException($"SetData {channels}"));
             }
         }
 
         void OnDisable()
         {
-            CancelInvoke();
             PlaybackSource.Stop();
             RedirectPlaybackAudio = false;
+            ReadBuffer = null;
+            ResampleBuffer = null;
         }
 
         private void OnDestroy()
