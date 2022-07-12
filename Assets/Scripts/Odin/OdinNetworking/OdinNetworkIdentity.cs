@@ -1,6 +1,9 @@
 using System.Collections.Generic;
+using System.Linq;
 using ElRaccoone.Tweens;
 using OdinNative.Odin.Peer;
+using OdinNative.Odin.Room;
+using OdinNative.Unity.Audio;
 using UnityEngine;
 
 namespace Odin.OdinNetworking
@@ -58,63 +61,75 @@ namespace Odin.OdinNetworking
             // Wait for the next slot for sending data
             if (Time.time - _lastSent > SendInterval)
             {
-                // Compile user data
-                OdinNetworkWriter userData = new OdinNetworkWriter();
-                
-                // Update Transform
-                userData.Write(SyncTransform);
-                if (SyncTransform)
+                UpdateUserData();
+            }
+        }
+
+        private OdinNetworkWriter CompileUserData()
+        {
+            OdinNetworkWriter userData = new OdinNetworkWriter();
+            
+            // Update Transform
+            userData.Write(SyncTransform);
+            if (SyncTransform)
+            {
+                userData.Write(transform);
+            }
+
+            // Update Animator
+            userData.Write(SyncAnimator && _animator);
+            if (SyncAnimator && _animator)
+            {
+                userData.Write(_animator.parameterCount);
+                foreach (var param in _animator.parameters)
                 {
-                    userData.Write(transform);
-                }
-                
-                // Update Animator
-                userData.Write(SyncAnimator && _animator);
-                if (SyncAnimator && _animator)
-                {
-                    userData.Write(_animator.parameterCount);
-                    foreach (var param in _animator.parameters)
+                    if (param.type == AnimatorControllerParameterType.Bool)
                     {
-                        if (param.type == AnimatorControllerParameterType.Bool)
-                        {
-                            userData.Write(OdinPrimitive.Bool);
-                            userData.Write(_animator.GetBool(param.name));       
-                        } 
-                        else if (param.type == AnimatorControllerParameterType.Float)
-                        {
-                            userData.Write(OdinPrimitive.Float);
-                            userData.Write(_animator.GetFloat(param.name));
-                        }
-                        else if (param.type == AnimatorControllerParameterType.Int)
-                        {
-                            userData.Write(OdinPrimitive.Integer);
-                            userData.Write(_animator.GetInteger(param.name));
-                        }
+                        userData.Write(OdinPrimitive.Bool);
+                        userData.Write(_animator.GetBool(param.name));       
+                    } 
+                    else if (param.type == AnimatorControllerParameterType.Float)
+                    {
+                        userData.Write(OdinPrimitive.Float);
+                        userData.Write(_animator.GetFloat(param.name));
+                    }
+                    else if (param.type == AnimatorControllerParameterType.Int)
+                    {
+                        userData.Write(OdinPrimitive.Integer);
+                        userData.Write(_animator.GetInteger(param.name));
                     }
                 }
-
-                // Update Sync Vars
-                WriteSyncVars(userData);
-                
-                // Write Networked objects
-                userData.Write((byte)SpawnedObjects.Count);
-                foreach (var networkedObject in SpawnedObjects)
-                {
-                    networkedObject.SerializeHeader(userData);
-                    networkedObject.SerializeBody(userData);
-                }                
-
-                // Compare if things have changed, then send an update
-                if (!userData.IsEqual(_lastUserData))
-                {
-                    Debug.Log($"Sending user data update: {userData.Cursor}");
-                    OdinNetworkManager.Instance.SendUserDataUpdate(userData);
-                }
-
-                // Store last user data
-                _lastUserData = userData;
-                _lastSent = Time.time;
             }
+
+            // Update Sync Vars
+            WriteSyncVars(userData);
+            
+            // Write Networked objects
+            userData.Write((byte)SpawnedObjects.Count);
+            foreach (var networkedObject in SpawnedObjects)
+            {
+                networkedObject.SerializeHeader(userData);
+                networkedObject.SerializeBody(userData);
+            }
+
+            return userData;
+        }
+
+        private void UpdateUserData()
+        {
+            // Compile user data
+            OdinNetworkWriter userData = CompileUserData(); 
+
+            // Compare if things have changed, then send an update
+            if (!userData.IsEqual(_lastUserData))
+            {
+                Debug.Log($"Sending user data update: {userData.Cursor}");
+                OdinNetworkManager.Instance.SendUserDataUpdate(userData);
+            }
+
+            // Store last user data
+            _lastUserData = userData;
+            _lastSent = Time.time;
         }
 
         public void MessageReceived(OdinNetworkIdentity sender, OdinNetworkReader reader)
@@ -263,8 +278,12 @@ namespace Odin.OdinNetworking
         {
             SpawnManagedNetworkedObject(prefab.name, position, rotation);
         }
-        
-        
+
+        private void AddToSpawnedObjectsList(OdinNetworkedObject networkedObject)
+        {
+            SpawnedObjects.Add(networkedObject);
+            _objectId++;
+        }
         
         public void SpawnManagedNetworkedObject(byte prefabId, Vector3 position, Quaternion rotation)
         {
@@ -275,8 +294,7 @@ namespace Odin.OdinNetworking
                 return;
             }
             
-            SpawnedObjects.Add(networkedObject);
-            _objectId++;
+            AddToSpawnedObjectsList(networkedObject);
         }
 
         public void SpawnManagedNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
@@ -288,8 +306,7 @@ namespace Odin.OdinNetworking
                 return;
             }
             
-            SpawnedObjects.Add(networkedObject);
-            _objectId++;
+            AddToSpawnedObjectsList(networkedObject);
         }
 
         public void SpawnNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
