@@ -7,7 +7,7 @@ namespace Odin.OdinNetworking
     [DisallowMultipleComponent]
     public class OdinNetworkSpawnPosition : MonoBehaviour
     {
-        void Start()
+        void Awake()
         {
             OdinNetworkManager.RegisterSpawnPosition(this.transform);
         }
