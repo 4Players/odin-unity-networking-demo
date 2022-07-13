@@ -88,8 +88,9 @@ namespace Odin.OdinNetworking
                 OdinHandler.Instance.OnMediaAdded.AddListener(OnMediaAdded);
                 OdinHandler.Instance.OnMediaRemoved.AddListener(OnMediaRemoved);                
             }
-
-            OdinHandler.Instance.JoinRoom(roomName);
+            
+            OdinMessage message = GetJoinMessage();
+            OdinHandler.Instance.JoinRoom(roomName, message);
         }
 
         private void OnDestroy()
@@ -149,9 +150,13 @@ namespace Odin.OdinNetworking
             var networkedObject = FindNetworkIdentityWithPeerId(eventArgs.PeerId);
             if (networkedObject != null)
             {
+                OdinUserDataUpdateMessage
+                    message = (OdinUserDataUpdateMessage)OdinMessage.FromBytes(eventArgs.UserData);
                 // The message came from this peer
-                OdinNetworkReader reader = new OdinNetworkReader(eventArgs.UserData);
-                networkedObject.UserDataUpdated(reader);
+                if (message.MessageType == OdinMessageType.UserData)
+                {
+                    networkedObject.OnUpdatedFromNetwork(message);   
+                }
             }
         }
 
@@ -210,23 +215,50 @@ namespace Odin.OdinNetworking
             OnLocalClientConnected(eventArgs.Room);
         }
         
-        public virtual OdinPlayer AddPlayer(Peer peer, OdinPlayer prefab)
+        public virtual OdinPlayer AddPlayer(Peer peer, OdinPlayer prefab, Vector3 position, Quaternion rotation)
         {
-            Transform startPos = GetStartPosition();
-            OdinPlayer player = startPos != null ? Instantiate(prefab, startPos.position, startPos.rotation) : Instantiate(prefab);
+            OdinPlayer player = Instantiate(prefab, position, rotation);
             player.Peer = peer;
             player.OnAwakeClient();
             return player;
         }
 
+        public virtual OdinMessage GetJoinMessage()
+        {
+            var startPos = GetStartPosition();
+            var position = startPos == null ? Vector3.zero : startPos.position;
+            var rotation = startPos == null ? Quaternion.identity : startPos.rotation;
+
+            OdinUserDataUpdateMessage message = new OdinUserDataUpdateMessage();
+            message.HasTransform = true;
+            message.Transform = new OdinUserDataTransform(position, rotation, Vector3.one);
+            return message;
+        }
+
         public virtual void OnClientConnected(Peer peer)
         {
-            var player = AddPlayer(peer, playerPrefab);
+            var position = Vector3.zero;
+            var rotation = Quaternion.identity;
             if (!peer.UserData.IsEmpty())
             {
-                OdinNetworkReader reader = new OdinNetworkReader(peer.UserData);
-                player.UserDataUpdated(reader);
+                OdinMessage message = OdinMessage.FromBytes(peer.UserData);
+                
+                // Check if this user just joined in with a crippled JoinServer Message or a complete User Data object
+                if (message.MessageType == OdinMessageType.UserData)
+                {
+                    var userDataMessage = (OdinUserDataUpdateMessage)message;
+                    if (userDataMessage != null && userDataMessage.HasTransform)
+                    {
+                        position = userDataMessage.Transform.Position;
+                        rotation = userDataMessage.Transform.Rotation;
+                    } 
+                }
+                else
+                {
+                    Debug.LogError($"Unknown Message Type on client connection: {message.MessageType}");
+                }
             }
+            var player = AddPlayer(peer, playerPrefab, position, rotation);
             player.OnStartClient();
         }
 
@@ -244,7 +276,16 @@ namespace Odin.OdinNetworking
         
         public virtual void OnLocalClientConnected(Room room)
         {
-            LocalPlayer = AddPlayer(room.Self, playerPrefab);
+            var position = Vector3.zero;
+            var rotation = Quaternion.identity;
+            if (!room.Self.UserData.IsEmpty())
+            {
+                OdinUserDataUpdateMessage message = (OdinUserDataUpdateMessage)OdinMessage.FromBytes(room.Self.UserData);
+                position = message.HasTransform ? message.Transform.Position : Vector3.zero;
+                rotation = message.HasTransform ? message.Transform.Rotation : Quaternion.identity;    
+            }
+            
+            LocalPlayer = AddPlayer(room.Self, playerPrefab, position, rotation);
             LocalPlayer.OnStartClient();
             LocalPlayer.OnStartLocalClient();
         }
@@ -254,6 +295,14 @@ namespace Odin.OdinNetworking
             var workerItem = new OdinUpdateUserWorkItem();
             workerItem.room = _room;
             workerItem.userData = writer;
+            ThreadPool.QueueUserWorkItem(SendMessageWorker, workerItem);
+        }
+        
+        public void SendMessage(OdinMessage message, bool includeSelf = false)
+        {
+            var workerItem = new OdinUpdateUserWorkItem();
+            workerItem.room = _room;
+            workerItem.userData = message.GetWriter();
             ThreadPool.QueueUserWorkItem(SendMessageWorker, workerItem);
         }
         

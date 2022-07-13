@@ -117,36 +117,41 @@ namespace Odin.OdinNetworking
             Write((byte)value);
         }
 
-        public void Write(Transform transform)
+        public void Write(Vector3 position, Quaternion rotation, Vector3 scale)
         {
             byte flags = 0;
-            if (!transform.localPosition.Equals(Vector3.zero))
+            if (!position.Equals(Vector3.zero))
             {
                 flags |= (byte)OdinNetworkingFlags.HasPosition;
             } 
-            if (!transform.localRotation.Equals(Quaternion.identity))
+            if (!rotation.Equals(Quaternion.identity))
             {
                 flags |= (byte)OdinNetworkingFlags.HasRotation;
             }
-            if (!transform.localScale.Equals(Vector3.one))
+            if (!scale.Equals(Vector3.one))
             {
                 flags |= (byte)OdinNetworkingFlags.HasScale;
             }
 
             Write(flags);
             
-            if (!transform.localPosition.Equals(Vector3.zero))
+            if (!position.Equals(Vector3.zero))
             {
-                Write(transform.localPosition);
+                Write(position);
             } 
-            if (!transform.localRotation.Equals(Quaternion.identity))
+            if (!rotation.Equals(Quaternion.identity))
             {
-                Write(transform.localRotation);
+                Write(rotation);
             }
-            if (!transform.localScale.Equals(Vector3.one))
+            if (!scale.Equals(Vector3.one))
             {
-                Write(transform.localScale);
+                Write(scale);
             }
+        }
+
+        public void Write(Transform transform)
+        {
+            Write(transform.localPosition, transform.localRotation, transform.localScale);
         }
 
         public void Write(OdinNetworkWriter writer)
@@ -244,7 +249,7 @@ namespace Odin.OdinNetworking
             return finalBytes;
         }
         
-        public byte[] ToBytes()
+        public virtual byte[] ToBytes()
         {
             if (Cursor < 100)
             {

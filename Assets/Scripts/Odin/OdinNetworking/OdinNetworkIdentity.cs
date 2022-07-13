@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using ElRaccoone.Tweens;
+using OdinNative.Odin;
 using OdinNative.Odin.Peer;
 using OdinNative.Odin.Room;
 using OdinNative.Unity.Audio;
@@ -14,10 +15,10 @@ namespace Odin.OdinNetworking
 
         [Header("Network Settings")]
         [Tooltip("Sync the transform as part of the peers user data")]
-        [SerializeField] private bool SyncTransform = true;
+        [SerializeField] public bool SyncTransform = true;
         
         [Tooltip("Sync the animator")]
-        [SerializeField] private bool SyncAnimator = true;
+        [SerializeField] public bool SyncAnimator = true;
 
         [Tooltip("The number of seconds until the next update is sent")]
         public float SendInterval = 0.1f;
@@ -27,7 +28,7 @@ namespace Odin.OdinNetworking
         Dictionary<int, OdinNetworkWriter> _lastNetworkedObjectStates = new Dictionary<int, OdinNetworkWriter>();
         private float _lastSent;
 
-        private Animator _animator;
+        public Animator _animator;
 
         public List<OdinNetworkedObject> SpawnedObjects { get; } = new List<OdinNetworkedObject>();
         private byte _objectId = 0;
@@ -67,58 +68,58 @@ namespace Odin.OdinNetworking
 
         private OdinNetworkWriter CompileUserData()
         {
-            OdinNetworkWriter userData = new OdinNetworkWriter();
-            
-            // Update Transform
-            userData.Write(SyncTransform);
+            OdinUserDataUpdateMessage message = new OdinUserDataUpdateMessage();
+            message.HasTransform = SyncTransform;
             if (SyncTransform)
             {
-                userData.Write(transform);
+                message.Transform = new OdinUserDataTransform(transform.localPosition, transform.localRotation,
+                    transform.localScale);
             }
 
-            // Update Animator
-            userData.Write(SyncAnimator && _animator);
             if (SyncAnimator && _animator)
             {
-                userData.Write(_animator.parameterCount);
+                message.HasAnimationParameters = true;
                 foreach (var param in _animator.parameters)
                 {
+                    var animationParam = new OdinUserDataAnimationParam();
                     if (param.type == AnimatorControllerParameterType.Bool)
                     {
-                        userData.Write(OdinPrimitive.Bool);
-                        userData.Write(_animator.GetBool(param.name));       
+                        animationParam.Primitive = OdinPrimitive.Bool;
+                        animationParam.Value = _animator.GetBool(param.name);
                     } 
                     else if (param.type == AnimatorControllerParameterType.Float)
                     {
-                        userData.Write(OdinPrimitive.Float);
-                        userData.Write(_animator.GetFloat(param.name));
+                        animationParam.Primitive = OdinPrimitive.Float;
+                        animationParam.Value = _animator.GetFloat(param.name);
                     }
                     else if (param.type == AnimatorControllerParameterType.Int)
                     {
-                        userData.Write(OdinPrimitive.Integer);
-                        userData.Write(_animator.GetInteger(param.name));
+                        animationParam.Primitive = OdinPrimitive.Integer;
+                        animationParam.Value = _animator.GetInteger(param.name);
                     }
+
+                    message.AnimationParams.Add(animationParam);
                 }
             }
 
-            // Update Sync Vars
-            WriteSyncVars(userData);
+            message.SyncVars = CompileSyncVars();
             
-            // Write Networked objects
-            userData.Write((byte)SpawnedObjects.Count);
             foreach (var networkedObject in SpawnedObjects)
             {
-                networkedObject.SerializeHeader(userData);
-                networkedObject.SerializeBody(userData);
+                var transform = new OdinUserDataTransform(networkedObject.transform.localPosition, networkedObject.transform.localRotation, networkedObject.transform.localScale);
+                var managedObject =
+                    new OdinUserDataManagedObject(networkedObject.ObjectId, networkedObject.PrefabId, transform);
+                managedObject.SyncVars = networkedObject.CompileSyncVars();
+                message.ManagedObjects.Add(managedObject);
             }
 
-            return userData;
+            return message.GetWriter();
         }
 
         private void UpdateUserData()
         {
             // Compile user data
-            OdinNetworkWriter userData = CompileUserData(); 
+            OdinNetworkWriter userData = CompileUserData();
 
             // Compare if things have changed, then send an update
             if (!userData.IsEqual(_lastUserData))
@@ -134,107 +135,76 @@ namespace Odin.OdinNetworking
 
         public void MessageReceived(OdinNetworkIdentity sender, OdinNetworkReader reader)
         {
-            OdinMessageType messageType = reader.ReadMessageType();
-
-            if (messageType == OdinMessageType.UpdateSyncVar)
+            OdinMessage message = OdinMessage.FromReader(reader);
+            if (message.MessageType == OdinMessageType.SpawnPrefab)
             {
-                var syncVarName = reader.ReadString();
-                var currentValue = reader.ReadObject();
-
-                OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
-                syncInfo.FieldInfo.SetValue(this, currentValue);
-            } 
-            else if (messageType == OdinMessageType.SpawnPrefab)
-            {
-                OdinMessage message = new OdinMessage(OdinMessageType.SpawnPrefab);
-                var prefabId = reader.ReadByte();
-                var objectId = reader.ReadByte();
-                var position = reader.ReadVector3();
-                var rotation = reader.ReadQuaternion();
+                var spawnPrefabMessgage = (OdinSpawnPrefabMessage)message;
+                var prefabId = spawnPrefabMessgage.PrefabId;
+                var objectId = spawnPrefabMessgage.ObjectId;
+                var position = spawnPrefabMessgage.Position;
+                var rotation = spawnPrefabMessgage.Rotation;
                 OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, objectId, position, rotation);
-            } 
-            else if (messageType == OdinMessageType.UpdateNetworkedObject)
-            {
-                int numberOfObjects = reader.ReadByte();
-                for (int i = 0; i < numberOfObjects; i++)
-                {
-                    var networkId = reader.ReadByte();
-                    var networkedObject = OdinNetworkManager.Instance.FindNetworkedObject(sender.Peer.Id, networkId);
-                    if (networkedObject)
-                    {
-                        var (localPosition, localRotation, localScale) = reader.ReadTransform();
-                        networkedObject.TweenLocalPosition(localPosition, SendInterval);
-                        networkedObject.TweenLocalRotation(localRotation.eulerAngles, SendInterval);
-                        networkedObject.TweenLocalScale(localScale, SendInterval);
-                    }
-                }
             }
         }
 
-        public void UserDataUpdated(OdinNetworkReader reader)
+        public virtual void OnUpdatedFromNetwork(OdinUserDataUpdateMessage message)
         {
-            // Read transform
-            var hasTransform = reader.ReadBoolean();
-            if (hasTransform)
+            if (message.HasTransform)
             {
-                var (localPosition, localRotation, localScale) = reader.ReadTransform();
-                gameObject.TweenLocalPosition(localPosition, SendInterval);
-                gameObject.TweenLocalRotation(localRotation.eulerAngles, SendInterval);
-                gameObject.TweenLocalScale(localScale, SendInterval);
+                gameObject.TweenLocalPosition(message.Transform.Position, SendInterval);
+                gameObject.TweenLocalRotation(message.Transform.Rotation.eulerAngles, SendInterval);
+                gameObject.TweenLocalScale(message.Transform.Scale, SendInterval);
             }
-            
-            // Read Animator
-            var hasAnimator = reader.ReadBoolean();
-            if (hasAnimator)
+
+            if (message.HasAnimationParameters && _animator)
             {
                 _animator = GetComponent<Animator>();
-                var numberOfParams = reader.ReadInt();
-                for (int i = 0; i < numberOfParams; i++)
+                for (int i = 0; i < message.AnimationParams.Count; i++)
                 {
                     var param = _animator.GetParameter(i);
-                    OdinPrimitive primitive = reader.ReadPrimitiveType();
-                    if (primitive == OdinPrimitive.Bool)
+                    var animationParam = message.AnimationParams[i];
+                    if (animationParam.Primitive == OdinPrimitive.Bool)
                     {
-                        _animator.SetBool(param.name, reader.ReadBoolean());
+                        _animator.SetBool(param.name, (bool)animationParam.Value);
                     } 
-                    else if (primitive == OdinPrimitive.Float)
+                    else if (animationParam.Primitive == OdinPrimitive.Float)
                     {
-                        _animator.SetFloat(param.name, reader.ReadFloat());
+                        _animator.SetFloat(param.name, (float)animationParam.Value);
                     }
-                    else if (primitive == OdinPrimitive.Integer)
+                    else if (animationParam.Primitive == OdinPrimitive.Integer)
                     {
-                        _animator.SetInteger(param.name, reader.ReadInt());
+                        _animator.SetInteger(param.name, (int)animationParam.Value);
                     }
                 }
             }
-            
-            // Sync Vars
-            ReadSyncVars(reader);
+
+            ReadSyncVars(message.SyncVars);
             
             // Networked Objects
-            PreparedSpawnedObjectsForUpdate();
-            
-            var numberOfNetworkedObjects = reader.ReadByte();
-            for (var i = 0; i < numberOfNetworkedObjects; i++)
+            if (message.ManagedObjects.Count > 0)
             {
-                var (objectId, prefabId) = OdinNetworkedObject.DeserializeHeader(reader);
-                var networkedObject = FindNetworkedObject(objectId);
-                if (networkedObject)
-                {
-                    networkedObject.UpdateFromReader(reader, true);
-                    networkedObject.IsUpdated = true;
-                }
-                else
-                {
-                    networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, objectId, Vector3.zero, Quaternion.identity);
-                    networkedObject.UpdateFromReader(reader, false);
-                    networkedObject.IsUpdated = true;
-                    SpawnedObjects.Add(networkedObject);
-                }
-            }
+                PreparedSpawnedObjectsForUpdate();
             
-            // Walk through all spawned objects and remove those that were not in the update list
-            DestroyDeprecatedSpawnedObjects();
+                foreach (var managedObject in message.ManagedObjects)
+                {
+                    var networkedObject = FindNetworkedObject(managedObject.ObjectId);
+                    if (networkedObject)
+                    {
+                        networkedObject.OnUpdatedFromNetwork(managedObject, true);
+                        networkedObject.IsUpdated = true;
+                    }
+                    else
+                    {
+                        networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, managedObject.PrefabId, managedObject.ObjectId, Vector3.zero, Quaternion.identity);
+                        networkedObject.OnUpdatedFromNetwork(managedObject, false);
+                        networkedObject.IsUpdated = true;
+                        SpawnedObjects.Add(networkedObject);
+                    }
+                }
+            
+                // Walk through all spawned objects and remove those that were not in the update list
+                DestroyDeprecatedSpawnedObjects();                
+            }
         }
 
         private void DestroyDeprecatedSpawnedObjects()
@@ -317,12 +287,8 @@ namespace Odin.OdinNetworking
                 Debug.LogWarning($"Could not spawn prefab {prefabName}");
                 return;
             }
-            
-            OdinMessage message = new OdinMessage(OdinMessageType.SpawnPrefab);
-            message.Write(networkedObject.PrefabId);
-            message.Write(_objectId);
-            message.Write(position);
-            message.Write(rotation);
+
+            OdinSpawnPrefabMessage message = new OdinSpawnPrefabMessage(networkedObject.PrefabId, _objectId, position, rotation);
             OdinNetworkManager.Instance.SendMessage(message, false);
             
             _objectId++;

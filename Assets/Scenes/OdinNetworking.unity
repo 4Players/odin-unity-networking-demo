@@ -890,6 +890,11 @@ PrefabInstance:
       propertyPath: m_Name
       value: OdinManager
       objectReference: {fileID: 0}
+    - target: {fileID: 3711129780530095855, guid: a421abe223e2dee45b89e686a84e5545,
+        type: 3}
+      propertyPath: AutostartListen
+      value: 1
+      objectReference: {fileID: 0}
     - target: {fileID: 4347901583853084589, guid: a421abe223e2dee45b89e686a84e5545,
         type: 3}
       propertyPath: m_RootOrder
@@ -954,6 +959,16 @@ PrefabInstance:
         type: 3}
       propertyPath: AccessKey
       value: AST55n/V5S27K08t2Yb89mEt4POECcw9S0Xleulhovn2
+      objectReference: {fileID: 0}
+    - target: {fileID: 7715469215244056103, guid: a421abe223e2dee45b89e686a84e5545,
+        type: 3}
+      propertyPath: Use3DAudio
+      value: 1
+      objectReference: {fileID: 0}
+    - target: {fileID: 7715469215244056103, guid: a421abe223e2dee45b89e686a84e5545,
+        type: 3}
+      propertyPath: CreatePlayback
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: a421abe223e2dee45b89e686a84e5545, type: 3}

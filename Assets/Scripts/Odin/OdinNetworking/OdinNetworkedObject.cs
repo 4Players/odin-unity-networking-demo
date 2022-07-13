@@ -38,18 +38,6 @@ public class OdinNetworkedObject : OdinNetworkItem
         Owner.DestroyNetworkedObject(this);
     }
 
-    public void SerializeHeader(OdinNetworkWriter writer)
-    {
-        writer.Write(ObjectId);
-        writer.Write(PrefabId);
-    }
-
-    public void SerializeBody(OdinNetworkWriter writer)
-    {
-        writer.Write(gameObject.transform);
-        WriteSyncVars(writer);
-    }
-
     public static (byte, byte) DeserializeHeader(OdinNetworkReader reader)
     {
         var objectId = reader.ReadByte();
@@ -57,22 +45,21 @@ public class OdinNetworkedObject : OdinNetworkItem
         return (objectId, prefabId);
     }
 
-    public void UpdateFromReader(OdinNetworkReader reader, bool tween = true)
+    public void OnUpdatedFromNetwork(OdinUserDataManagedObject managedObject, bool tween = true)
     {
-        var (localPosition, localRotation, localScale) = reader.ReadTransform();
         if (tween)
         {
-            this.TweenLocalPosition(localPosition, Owner.SendInterval);
-            this.TweenLocalRotation(localRotation.eulerAngles, Owner.SendInterval);
-            this.TweenLocalScale(localScale, Owner.SendInterval);    
+            this.TweenLocalPosition(managedObject.Transform.Position, Owner.SendInterval);
+            this.TweenLocalRotation(managedObject.Transform.Rotation.eulerAngles, Owner.SendInterval);
+            this.TweenLocalScale(managedObject.Transform.Scale, Owner.SendInterval);    
         }
         else
         {
-            transform.localPosition = localPosition;
-            transform.localRotation = localRotation;
-            transform.localScale = localScale;
+            transform.localPosition = managedObject.Transform.Position;
+            transform.localRotation = managedObject.Transform.Rotation;
+            transform.localScale = managedObject.Transform.Scale;
         }
         
-        ReadSyncVars(reader);
+        ReadSyncVars(managedObject.SyncVars);
     }
 }

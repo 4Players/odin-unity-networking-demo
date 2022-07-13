@@ -42,37 +42,29 @@ public class OdinNetworkItem : MonoBehaviour
 
     }
 
-    protected void ReadSyncVars(OdinNetworkReader reader)
+    protected void ReadSyncVars(List<OdinUserDataSyncVar> syncVars)
     {
-        var numberOfSyncVars = reader.ReadByte();
-        if (numberOfSyncVars > 0)
+        foreach (var syncVar in syncVars)
         {
-            for (byte i = 0; i < numberOfSyncVars; i++)
+            if (!_syncVars.ContainsKey(syncVar.Name))
             {
-                var syncVarName = reader.ReadString();
-                var receivedValue = reader.ReadObject();
-
-                if (!_syncVars.ContainsKey(syncVarName))
+                Debug.LogError($"Sync variable {syncVar.Name} not available in object {gameObject.name}");
+            }
+            else
+            {
+                OdinSyncVarInfo syncInfo = _syncVars[syncVar.Name];
+                if (syncInfo != null)
                 {
-                    Debug.LogError($"Sync variable {syncVarName} not available in object {gameObject.name}");
-                }
-                else
-                {
-                    OdinSyncVarInfo syncInfo = _syncVars[syncVarName];
-                    if (syncInfo != null)
+                    var currentValue = syncInfo.FieldInfo.GetValue(this);
+                    if (!currentValue.Equals(syncVar.Value))
                     {
-                        var currentValue = syncInfo.FieldInfo.GetValue(this);
-                        if (!currentValue.Equals(receivedValue))
-                        {
-                            OnSyncVarChanged(syncInfo, currentValue, receivedValue);
-                        }
+                        OnSyncVarChanged(syncInfo, currentValue, syncVar.Value);
                     }
                 }
-                                    
             }
         }
     }
-
+    
     private void OnSyncVarChanged(OdinSyncVarInfo syncInfo, object oldValue, object newValue)
     {
         syncInfo.FieldInfo.SetValue(this, newValue);
@@ -86,9 +78,11 @@ public class OdinNetworkItem : MonoBehaviour
             }
         }
     }
-
-    protected void WriteSyncVars(OdinNetworkWriter writer)
+    
+    public List<OdinUserDataSyncVar> CompileSyncVars()
     {
+        var syncVars = new List<OdinUserDataSyncVar>();
+        
         byte numberOfDirtySyncVars = 0;
         Dictionary<string, object> dirtySyncVars = new Dictionary<string, object>();
         foreach (var key in _syncVars.Keys)
@@ -110,13 +104,14 @@ public class OdinNetworkItem : MonoBehaviour
                 numberOfDirtySyncVars++;
             }
         }
-
-        writer.Write(numberOfDirtySyncVars);
+        
         foreach (var key in dirtySyncVars.Keys)
         {
-            writer.Write(key);
-            writer.Write(dirtySyncVars[key]);
+            var syncVar = new OdinUserDataSyncVar(key, dirtySyncVars[key]);
+            syncVars.Add(syncVar);
         }
+
+        return syncVars;
     }
     
     public virtual void OnStartLocalClient()
