@@ -1,10 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Serialization;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
     /// <summary>
     /// <para>
@@ -20,14 +18,14 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
     /// <remarks>
     /// Only audio sources with colliders in the parent hierarchy can be detected!
     /// </remarks>
-    public class DirectionalAudioListener : AAudioListenerEffect
+    public class OdinDirectionalAudioListener : OdinAudioListenerEffect
     {
         /// <summary>
         /// The settings file, containing data which manipulates audio sources in range based on distance and
         /// angle between source and listener.
         /// </summary>
         [FormerlySerializedAs("directionAudioSettings")] [FormerlySerializedAs("directionSettings")] [SerializeField]
-        private AudioEffectDefinition directionalSettings;
+        private OdinAudioEffectDefinition directionalSettings;
 
         protected override void Awake()
         {
@@ -47,7 +45,7 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             // determine angle between audio listener and audio source
             float signedAngle = Vector3.SignedAngle(listenerForwards, toSource, Vector3.up);
 
-            AudioEffectApplicator applicator = data.GetApplicator();
+            OdinAudioEffectApplicator applicator = data.GetApplicator();
             if(applicator) 
                 applicator.Apply(directionalSettings.GetEffect(signedAngle));
         }

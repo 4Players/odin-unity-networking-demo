@@ -455,7 +455,7 @@ GameObject:
     type: 3}
   m_PrefabInstance: {fileID: 8417262278547465098}
   m_PrefabAsset: {fileID: 0}
---- !u!114 &8822470255715831883
+--- !u!114 &2048439173770602077
 MonoBehaviour:
   m_ObjectHideFlags: 0
   m_CorrespondingSourceObject: {fileID: 0}
@@ -464,15 +464,14 @@ MonoBehaviour:
   m_GameObject: {fileID: 5304129495704119643}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b47715f04e3fe4cd295b6ddae2f64d7c, type: 3}
+  m_Script: {fileID: 11500000, guid: d279b7ae73bdd45d38b3355ab2cc88ab, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
   SendInterval: 0.1
   SyncTransform: 1
   SyncAnimator: 1
   _animator: {fileID: 0}
-  playerName: {fileID: 1358801394037747888}
   odinEars: {fileID: 874978857911826055}
   odinMouth: {fileID: 2641380520670153988}
   Name: 
-  movementSpeed: 2
+  playerName: {fileID: 1358801394037747888}

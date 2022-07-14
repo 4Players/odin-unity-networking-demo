@@ -2,19 +2,19 @@
 using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
     /// <summary>
     ///     Script containing the behaviour for applying and removing both occlusion or direction effects on the connected
     ///     audio source. Multiple effects added during one frame will be accumulated according
-    ///     to the <see cref="AudioEffectDefinition" />'s <see cref="AudioEffectDefinition.GetCombinedEffect" />
+    ///     to the <see cref="OdinAudioEffectDefinition" />'s <see cref="OdinAudioEffectDefinition.GetCombinedEffect" />
     ///     implementation.
     /// </summary>
     /// <remarks>
     ///     This script is added automatically by the directional or occlusion system, if not placed on an audio source.
     /// </remarks>
     [RequireComponent(typeof(AudioSource))]
-    public class AudioEffectApplicator : MonoBehaviour
+    public class OdinAudioEffectApplicator : MonoBehaviour
     {
         /// <summary>
         /// If set to true, the audio occlusion system will remove the parent colliders of this occluded audio source
@@ -23,11 +23,11 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
         /// </summary>
         [SerializeField] private bool removeParentCollidersForOcclusion = true;
         
-        private readonly List<AudioEffectData> _effectList = new List<AudioEffectData>();
+        private readonly List<OdinAudioEffectData> _effectList = new List<OdinAudioEffectData>();
         private AudioSource _audioSource;
         private AudioLowPassFilter _lowPassFilter;
 
-        private AudioEffectData _originalEffect;
+        private OdinAudioEffectData _originalEffect;
 
         public bool RemoveParentCollidersForOcclusion => removeParentCollidersForOcclusion;
 
@@ -55,9 +55,9 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
 
         private void Update()
         {
-            var toApply = AudioEffectData.Default;
+            var toApply = OdinAudioEffectData.Default;
             foreach (var effectData in _effectList)
-                toApply = AudioEffectDefinition.GetCombinedEffect(toApply, effectData);
+                toApply = OdinAudioEffectDefinition.GetCombinedEffect(toApply, effectData);
 
             if (toApply.IsAudible)
             {
@@ -75,16 +75,16 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
 
         /// <summary>
         ///     Applies the effect to the audio source. Multiple effects added during one frame will be occumulated according
-        ///     to the <see cref="AudioEffectDefinition" />'s <see cref="AudioEffectDefinition.GetCombinedEffect" />
+        ///     to the <see cref="OdinAudioEffectDefinition" />'s <see cref="OdinAudioEffectDefinition.GetCombinedEffect" />
         ///     implementation.
         /// </summary>
         /// <param name="effectData"></param>
-        public void Apply(AudioEffectData effectData)
+        public void Apply(OdinAudioEffectData effectData)
         {
             _effectList.Add(effectData);
         }
 
-        private void ApplyInstant(AudioEffectData effectData)
+        private void ApplyInstant(OdinAudioEffectData effectData)
         {
             _lowPassFilter.cutoffFrequency = effectData.CutoffFrequency;
             _lowPassFilter.lowpassResonanceQ = effectData.LowpassResonanceQ;

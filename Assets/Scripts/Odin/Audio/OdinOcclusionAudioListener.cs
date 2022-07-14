@@ -3,7 +3,7 @@ using UnityEngine;
 using UnityEngine.Assertions;
 using UnityEngine.Serialization;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
     /// <summary>
     ///     <para>
@@ -12,8 +12,8 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
     ///         and applies audio occlusion effects to them, if required.
     ///     </para>
     ///     <para>
-    ///         If Audio Source gameobjects have a <see cref="AudioObstacle" /> script attached, the
-    ///         <see cref="Audio.AudioEffectDefinition" />
+    ///         If Audio Source gameobjects have a <see cref="OdinAudioObstacle" /> script attached, the
+    ///         <see cref="OdinAudioEffectDefinition" />
     ///         associated to the obstacle will be used, otherwise a fallback method based on detecting the thickness of
     ///         objects
     ///         with colliders between the <see cref="AudioListener" /> and <see cref="AudioSource" /> will be used.
@@ -22,16 +22,16 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
     /// <remarks>
     ///     Only audio sources with colliders in the parent hierarchy can be detected!
     /// </remarks>
-    public class OcclusionAudioListener : AAudioListenerEffect
+    public class OdinOcclusionAudioListener : OdinAudioListenerEffect
     {
         /// <summary>
         ///     Reference to the audio occlusion settings object.
         /// </summary>
         [FormerlySerializedAs("occlusionSettings")] [SerializeField]
-        private AudioEffectDefinition defaultOcclusionEffect;
+        private OdinAudioEffectDefinition defaultOcclusionEffect;
 
         /// <summary>
-        ///     The Layers on which audio occluding Colliders are detected by the <see cref="OcclusionAudioListener" />.
+        ///     The Layers on which audio occluding Colliders are detected by the <see cref="OdinOcclusionAudioListener" />.
         /// </summary>
         [SerializeField] private LayerMask audioSourceDetectionLayer = ~0;
 
@@ -73,12 +73,12 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             //     Debug.Log($"Found forwardhit collider on: {forwardHit.collider.gameObject}");
             
             // Initialise with default, non-audible effect
-            AudioEffectData combinedEffect = AudioEffectData.Default;
+            OdinAudioEffectData combinedEffect = OdinAudioEffectData.Default;
             foreach (RaycastHit forwardHit in forwardHits)
                 combinedEffect = AddOcclusionEffect(forwardHit, backwardsHits, combinedEffect);
 
             // apply the combined effect
-            AudioEffectApplicator audioEffectApplicator = data.GetApplicator();
+            OdinAudioEffectApplicator audioEffectApplicator = data.GetApplicator();
             if (audioEffectApplicator)
                 audioEffectApplicator.Apply(combinedEffect);
         }
@@ -97,18 +97,18 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             return hits;
         }
 
-        private AudioEffectData AddOcclusionEffect(RaycastHit forwardHit, List<RaycastHit> backwardsHits,
-            AudioEffectData combinedEffect)
+        private OdinAudioEffectData AddOcclusionEffect(RaycastHit forwardHit, List<RaycastHit> backwardsHits,
+            OdinAudioEffectData combinedEffect)
         {
             // Get the thickness of the hit object
             float objectThickness = RetrieveThickness(forwardHit, backwardsHits);
-            AudioEffectData occlusionEffect;
+            OdinAudioEffectData occlusionEffect;
             // Check if the collider has an Audio Obstacle
-            AudioObstacle audioObstacle = forwardHit.collider.GetComponent<AudioObstacle>();
+            OdinAudioObstacle audioObstacle = forwardHit.collider.GetComponent<OdinAudioObstacle>();
             if (audioObstacle)
             {
                 // if yes - use the effect given by the audio obstacle effect definition based on the object thickness
-                AudioEffectDefinition effectDefinition = audioObstacle.effect;
+                OdinAudioEffectDefinition effectDefinition = audioObstacle.effect;
                 occlusionEffect = effectDefinition.GetEffect(objectThickness);
             }
             else
@@ -118,7 +118,7 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             }
 
             // Combine the effect so far with the newly retrieved effect
-            combinedEffect = AudioEffectDefinition.GetCombinedEffect(combinedEffect, occlusionEffect);
+            combinedEffect = OdinAudioEffectDefinition.GetCombinedEffect(combinedEffect, occlusionEffect);
             return combinedEffect;
         }
 

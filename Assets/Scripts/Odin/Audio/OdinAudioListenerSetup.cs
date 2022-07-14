@@ -1,14 +1,13 @@
-﻿using System;
-using UnityEngine;
+﻿using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
     /// <summary>
     /// Used by the ODIN sample audio system to setup the 
     /// </summary>
     [RequireComponent(typeof(SphereCollider), typeof(Rigidbody))]
-    public class AudioListenerSetup : MonoBehaviour
+    public class OdinAudioListenerSetup : MonoBehaviour
     {
         [SerializeField] private float detectionRange = 100.0f;
         

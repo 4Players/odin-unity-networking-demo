@@ -1,5 +1,4 @@
-using System;
-using ODIN_Sample.Scripts.Runtime.Audio;
+using Odin.Audio;
 using UnityEngine;
 
 namespace Odin.OdinNetworking
@@ -8,14 +7,14 @@ namespace Odin.OdinNetworking
     public class OdinEars : MonoBehaviour
     {
         [SerializeField] private AudioListener _audioListener;
-        [SerializeField] private DirectionalAudioListener _directionalAudioListener;
-        [SerializeField] private OcclusionAudioListener _occlusionAudioListener;
+        [SerializeField] private OdinDirectionalAudioListener _directionalAudioListener;
+        [SerializeField] private OdinOcclusionAudioListener _occlusionAudioListener;
 
         private void Awake()
         {
             if (!_audioListener) _audioListener = GetComponent<AudioListener>();
-            if (!_directionalAudioListener) _directionalAudioListener = GetComponent<DirectionalAudioListener>();
-            if (!_occlusionAudioListener) _occlusionAudioListener = GetComponent<OcclusionAudioListener>();
+            if (!_directionalAudioListener) _directionalAudioListener = GetComponent<OdinDirectionalAudioListener>();
+            if (!_occlusionAudioListener) _occlusionAudioListener = GetComponent<OdinOcclusionAudioListener>();
         }
     }
 }

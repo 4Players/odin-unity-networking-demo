@@ -1,13 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
-using Odin.OdinNetworking;
 using UnityEngine;
 using UnityEngine.Assertions;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
-    [RequireComponent(typeof(AudioListenerSetup))]
-    public abstract class AAudioListenerEffect : MonoBehaviour
+    [RequireComponent(typeof(OdinAudioListenerSetup))]
+    public abstract class OdinAudioListenerEffect : MonoBehaviour
     {
         /// <summary>
         /// Reference to the audio listener. If null, will try to get the audio listener on this gameobject.
@@ -21,7 +20,6 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
 
         
         protected readonly Dictionary<int, AudioSourceData> DetectedAudioSources = new Dictionary<int, AudioSourceData>();
-        private readonly Dictionary<int, OdinPlayer> _mutedPlayers = new Dictionary<int, OdinPlayer>();
 
         protected virtual void Awake()
         {
@@ -32,16 +30,6 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
 
         protected virtual void Update()
         {
-            // Check if muted players have an AudioSource yet
-            foreach (var odinPlayer in _mutedPlayers.Values)
-            {
-                if (odinPlayer.odinMouth.AudioSource != null)
-                {
-                    AddAudioSource(odinPlayer.odinMouth.AudioSource);
-                    _mutedPlayers.Remove(odinPlayer.GetInstanceID());
-                }
-            }
-            
             // store audio sources that should be removed and remove all at the end of the update.
             List<int> valuesToRemove = new List<int>();
             foreach (KeyValuePair<int, AudioSourceData> dataPair in DetectedAudioSources)
@@ -72,28 +60,7 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
         /// <param name="other">The collider of the object we detected.</param>
         protected virtual void OnTriggerEnter(Collider other)
         {
-            var odinPlayer = other.GetComponent<OdinPlayer>();
             var audioSources = other.GetComponentsInChildren<AudioSource>(includeInactiveAudioSourcesInSearch);
-            if (odinPlayer != null)
-            {
-                if (odinPlayer.GetInstanceID() == GetComponentInParent<OdinPlayer>().GetInstanceID())
-                {
-                    // Self collision
-                    return;
-                }
-                
-                // We need to handle that special, because players might exist without AudioSource yet (either because
-                // it has not been attached yet or user has been muted)
-                if (audioSources.Length <= 0)
-                {
-                    int instanceId = odinPlayer.GetInstanceID();
-                    if (!_mutedPlayers.ContainsKey(instanceId))
-                    {
-                        _mutedPlayers.Add(instanceId, odinPlayer);
-                    }
-                }
-            }
-            
             foreach (AudioSource audioSource in audioSources)
             {
                 AddAudioSource(audioSource);
@@ -162,7 +129,7 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             /// </summary>
             public AudioSource ConnectedSource { get; private set; }
 
-            private AudioEffectApplicator _cachedApplicator;
+            private OdinAudioEffectApplicator _cachedApplicator;
 
             public AudioSourceData(int numTriggersEntered, AudioSource connectedSource)
             {
@@ -174,13 +141,13 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             /// Retrieve the effect applicator, used to apply effects to the <see cref="ConnectedSource"/>.
             /// </summary>
             /// <returns>The effect applicator.</returns>
-            public AudioEffectApplicator GetApplicator()
+            public OdinAudioEffectApplicator GetApplicator()
             {
                 if (!_cachedApplicator && ConnectedSource)
                 {
-                    _cachedApplicator = ConnectedSource.GetComponent<AudioEffectApplicator>();
+                    _cachedApplicator = ConnectedSource.GetComponent<OdinAudioEffectApplicator>();
                     if (!_cachedApplicator)
-                        _cachedApplicator = ConnectedSource.gameObject.AddComponent<AudioEffectApplicator>();
+                        _cachedApplicator = ConnectedSource.gameObject.AddComponent<OdinAudioEffectApplicator>();
                 }
                 return _cachedApplicator;
             }

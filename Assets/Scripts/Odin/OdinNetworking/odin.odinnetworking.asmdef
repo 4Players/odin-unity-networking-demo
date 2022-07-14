@@ -1,0 +1,18 @@
+{
+    "name": "Odin.OdinNetworking",
+    "rootNamespace": "",
+    "references": [
+        "GUID:5b555e87eabf4494d804f51133bf7aa1",
+        "GUID:9c9b4fe8b39ae5b41a7700da7b05a2c7",
+        "GUID:6f0786a5bbd4d44b992c72105d6500fe"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

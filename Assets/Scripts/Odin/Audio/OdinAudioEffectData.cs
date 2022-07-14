@@ -1,6 +1,6 @@
-﻿namespace ODIN_Sample.Scripts.Runtime.Audio
+﻿namespace Odin.Audio
 {
-    public struct AudioEffectData
+    public struct OdinAudioEffectData
     {
         public float Volume;
         public float CutoffFrequency;
@@ -14,8 +14,8 @@
             LowpassResonanceQ > 1.01f;
 
 
-        public static AudioEffectData Default =>
-            new AudioEffectData
+        public static OdinAudioEffectData Default =>
+            new OdinAudioEffectData
             {
                 Volume = 1.0f,
                 CutoffFrequency = 22000.0f,

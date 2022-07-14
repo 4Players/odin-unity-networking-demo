@@ -1,13 +1,13 @@
 ﻿using UnityEngine;
 
-namespace ODIN_Sample.Scripts.Runtime.Audio
+namespace Odin.Audio
 {
     /// <summary>
     ///     Scriptable object containing data, which defines the effect on the Audio Source when being used as an
     ///     Audio Obstacle.
     /// </summary>
-    [CreateAssetMenu(fileName = "AudioEffectDefinition", menuName = "Odin-Demo/AudioEffectDefinition", order = 0)]
-    public class AudioEffectDefinition : ScriptableObject
+    [CreateAssetMenu(fileName = "MyAudioEffectDefinition", menuName = "Odin/Audio Effect", order = 0)]
+    public class OdinAudioEffectDefinition : ScriptableObject
     {
         [SerializeField] private AnimationCurve cutoffFrequencyCurve;
 
@@ -40,9 +40,9 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
             return lowpassResonanceQCurve.Evaluate(thickness);
         }
 
-        public AudioEffectData GetEffect(float thickness)
+        public OdinAudioEffectData GetEffect(float thickness)
         {
-            return new AudioEffectData
+            return new OdinAudioEffectData
             {
                 Volume = GetVolume(thickness),
                 CutoffFrequency = GetCutoffFrequency(thickness),
@@ -56,21 +56,21 @@ namespace ODIN_Sample.Scripts.Runtime.Audio
         }
 
         /// <summary>
-        ///     Returns a new <see cref="Audio.AudioEffectDefinition" /> object, containing the combined effect of the given two
+        ///     Returns a new <see cref="OdinAudioEffectDefinition" /> object, containing the combined effect of the given two
         ///     effects.
         /// </summary>
         /// <param name="first">First effect</param>
         /// <param name="second">Second effect</param>
         /// <returns>Combined effect.</returns>
-        public static AudioEffectData GetCombinedEffect(AudioEffectData first,
-            AudioEffectData second)
+        public static OdinAudioEffectData GetCombinedEffect(OdinAudioEffectData first,
+            OdinAudioEffectData second)
         {
             if (!first.IsAudible)
                 return second;
             if (!second.IsAudible)
                 return first;
 
-            var combined = new AudioEffectData();
+            var combined = new OdinAudioEffectData();
 
             combined.Volume = Mathf.Min(first.Volume, second.Volume, 1.0f);
             combined.CutoffFrequency = Mathf.Min(first.CutoffFrequency, second.CutoffFrequency);
