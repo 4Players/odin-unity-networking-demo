@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
@@ -53,13 +54,15 @@ namespace Odin.OdinNetworking
 
         private Room _room;
         public OdinPlayer LocalPlayer { get; private set; }
+        public OdinPlayer Host { get; private set; }
         
         public static OdinNetworkManager Instance { get; private set; }
         
         /// <summary>List of transforms populated by NetworkStartPositions</summary>
         public static List<Transform> startPositions = new List<Transform>();
         public static int startPositionIndex;
-        
+
+        public OdinWorld World { get; private set;  }
 
         void Awake()
         {
@@ -73,6 +76,8 @@ namespace Odin.OdinNetworking
             }
             
             DontDestroyOnLoad(gameObject);
+
+            World = FindObjectOfType<OdinWorld>();
         }
 
         void Start()
@@ -82,6 +87,7 @@ namespace Odin.OdinNetworking
             OdinHandler.Instance.OnPeerLeft.AddListener(OnPeerLeft);
             OdinHandler.Instance.OnMessageReceived.AddListener(OnMessageReceived);
             OdinHandler.Instance.OnPeerUserDataChanged.AddListener(OnPeerUserDataUpdated);
+            OdinHandler.Instance.OnRoomUserDataChanged.AddListener(OnRoomUserDataChanged);
 
             if (handleMediaEvents)
             {
@@ -100,6 +106,7 @@ namespace Odin.OdinNetworking
             OdinHandler.Instance.OnPeerLeft.RemoveListener(OnPeerLeft);
             OdinHandler.Instance.OnMessageReceived.RemoveListener(OnMessageReceived);
             OdinHandler.Instance.OnPeerUserDataChanged.RemoveListener(OnPeerUserDataUpdated);
+            OdinHandler.Instance.OnRoomUserDataChanged.RemoveListener(OnRoomUserDataChanged);
 
             if (handleMediaEvents)
             {
@@ -110,11 +117,18 @@ namespace Odin.OdinNetworking
             startPositionIndex = 0;
         }
 
-        void Update()
+        private void OnRoomUserDataChanged(object sender, RoomUserDataChangedEventArgs eventArgs)
         {
-
+            Debug.Log($"Received room update data with length {eventArgs.Data.Buffer.Length}");
+            
+            OdinWorldUpdateMessage message = (OdinWorldUpdateMessage)OdinMessage.FromBytes(eventArgs.Data);
+            // The message came from this peer
+            if (message != null)
+            {
+                World.OnUpdatedFromNetwork(message);   
+            }
         }
-
+        
         private void OnMediaAdded(object sender, MediaAddedEventArgs eventArgs)
         {
             var room = sender as Room;
@@ -158,19 +172,6 @@ namespace Odin.OdinNetworking
                     networkedObject.OnUpdatedFromNetwork(message);   
                 }
             }
-        }
-
-        public OdinNetworkedObject FindNetworkedObject(ulong peerId, byte networkId)
-        {
-            foreach (var networkedObject in FindObjectsOfType<OdinNetworkedObject>())
-            {
-                if (networkedObject.Owner.Peer.Id == peerId && networkedObject.ObjectId == networkId)
-                {
-                    return networkedObject;
-                }
-            }
-
-            return null;
         }
 
         private OdinNetworkIdentity FindNetworkIdentityWithPeerId(ulong peerId)
@@ -286,8 +287,42 @@ namespace Odin.OdinNetworking
             }
             
             LocalPlayer = AddPlayer(room.Self, playerPrefab, position, rotation);
+            
+            // Check out if we are first
+            if (room.RemotePeers.Count <= 0 && Host == null)
+            {
+                // I am the first to connect, so I am the host
+                Host = LocalPlayer;
+                if (World != null)
+                {
+                    World.SetOwner(Host);
+                }
+            }
+            /*
+            else
+            {
+                // Just a client
+                OdinWorldUpdateMessage message = (OdinWorldUpdateMessage)OdinMessage.FromBytes(room.);
+                // The message came from this peer
+                if (message.MessageType == OdinMessageType.UserData)
+                {
+                    World.OnUpdatedFromNetwork(message);   
+                }
+            }*/
+
             LocalPlayer.OnStartClient();
             LocalPlayer.OnStartLocalClient();
+        }
+
+        public void UpdateRoomData(OdinNetworkWriter writer)
+        {
+            if (_room == null)
+            {
+                return;
+            }
+            
+            Debug.Log($"Updating Room Data: {writer.Cursor}");
+            _room.UpdateRoomUserDataAsync(writer);
         }
 
         public void SendMessage(OdinNetworkWriter writer, bool includeSelf = false)
@@ -297,13 +332,36 @@ namespace Odin.OdinNetworking
             workerItem.userData = writer;
             ThreadPool.QueueUserWorkItem(SendMessageWorker, workerItem);
         }
-        
+
         public void SendMessage(OdinMessage message, bool includeSelf = false)
         {
             var workerItem = new OdinUpdateUserWorkItem();
             workerItem.room = _room;
             workerItem.userData = message.GetWriter();
             ThreadPool.QueueUserWorkItem(SendMessageWorker, workerItem);
+        }
+
+        public Peer GetHost()
+        {
+            if (_room.RemotePeers.Count < 1)
+            {
+                return null;
+            }
+
+            foreach (var peer in _room.RemotePeers)
+            {
+                return peer;
+            }
+
+            return null;
+        }
+
+        public void SendCommand(OdinCommandMessage message)
+        {
+            var host = GetHost();
+            if (host == null) return;
+            
+            _room.SendMessageAsync(new[]{ host.Id }, message.ToBytes());
         }
         
         private void SendUserDataUpdateWorker(object state)
@@ -336,7 +394,7 @@ namespace Odin.OdinNetworking
 
         }
 
-        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkIdentity owner, byte prefabId, byte objectId, Vector3 position, Quaternion rotation)
+        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkItem owner, byte prefabId, byte objectId, Vector3 position, Quaternion rotation)
         {
             if (prefabId >= spawnablePrefabs.Count)
             {
@@ -354,10 +412,7 @@ namespace Odin.OdinNetworking
             // Make sure that rigid bodies are set to kinetic if they have been spawned by other clients (they control the position)
             if (!owner.IsLocalPlayer())
             {
-                foreach (var rb in obj.gameObject.GetComponentsInChildren<Rigidbody>())
-                {
-                    rb.isKinematic = true;
-                }    
+                obj.IsKinetic = true;
             }
             
             obj.OnStartClient();
@@ -369,7 +424,7 @@ namespace Odin.OdinNetworking
             return obj;
         }
 
-        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkIdentity owner, string prefabName, byte objectId, Vector3 position, Quaternion rotation)
+        public virtual OdinNetworkedObject SpawnPrefab(OdinNetworkItem owner, string prefabName, byte objectId, Vector3 position, Quaternion rotation)
         {
             for (byte i=0;i<spawnablePrefabs.Count;i++)
             {

@@ -168,7 +168,12 @@ namespace Odin.OdinNetworking
             {
                 Write((byte)OdinPrimitive.String);
                 Write(s);
-            } 
+            }
+            else if (value is byte bt)
+            {
+                Write((byte)OdinPrimitive.Byte);
+                Write(bt);
+            }            
             else if (value is int i)
             {
                 Write((byte)OdinPrimitive.Integer);

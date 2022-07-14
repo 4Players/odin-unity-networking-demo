@@ -10,7 +10,7 @@ using UnityEngine;
 public class OdinNetworkedObject : OdinNetworkItem
 {
     [HideInInspector]
-    public OdinNetworkIdentity Owner;
+    public OdinNetworkItem Owner;
     [HideInInspector]
     public byte ObjectId;
     [HideInInspector]

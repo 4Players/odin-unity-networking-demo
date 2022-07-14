@@ -213,6 +213,10 @@ namespace Odin.OdinNetworking
             else if (primitive == OdinPrimitive.Bool)
             {
                 return ReadBoolean();
+            }            
+            else if (primitive == OdinPrimitive.Byte)
+            {
+                return ReadByte();
             }                        
             else if (primitive == OdinPrimitive.Integer)
             {

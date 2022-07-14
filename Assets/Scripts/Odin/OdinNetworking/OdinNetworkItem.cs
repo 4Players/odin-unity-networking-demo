@@ -19,8 +19,30 @@ public class OdinNetworkItem : MonoBehaviour
             object currentValue = FieldInfo.GetValue(instance); 
         }
     }
+    
+    [Tooltip("The number of seconds until the next update is sent")]
+    public float SendInterval = 0.1f;
+    
+    public List<OdinNetworkedObject> ManagedObjects { get; } = new List<OdinNetworkedObject>();
+    protected byte _objectId = 0;
         
     protected Dictionary<string, OdinSyncVarInfo> _syncVars = new Dictionary<string, OdinSyncVarInfo>();
+    
+    protected OdinNetworkWriter _lastUserData = null;
+    protected OdinNetworkWriter _lastNetworkedObjectUpdate = null;
+    protected float _lastSent;
+
+    public bool IsKinetic
+    {
+        set
+        {
+            // Set objects to be kinetic per default
+            foreach (var rb in this.GetComponentsInChildren<Rigidbody>())
+            {
+                rb.isKinematic = value;
+            }    
+        }
+    }
 
     public virtual void OnAwakeClient()
     {
@@ -126,5 +148,103 @@ public class OdinNetworkItem : MonoBehaviour
     public virtual void OnStopLocalClient()
     {
             
+    }
+    
+    public bool IsLocalPlayer()
+    {
+        return OdinNetworkManager.Instance.LocalPlayer == this;
+    }
+    
+    public bool IsHost()
+    {
+        return OdinNetworkManager.Instance.LocalPlayer == OdinNetworkManager.Instance.Host;
+    }
+    
+    public void SpawnManagedNetworkedObject(GameObject prefab, Vector3 position, Quaternion rotation)
+    {
+        SpawnManagedNetworkedObject(prefab.name, position, rotation);
+    }
+
+    public void AddToManagedObjectsList(OdinNetworkedObject networkedObject)
+    {
+        if (networkedObject.Owner == null)
+        {
+            networkedObject.Owner = this;
+        }
+        
+        ManagedObjects.Add(networkedObject);
+        _objectId++;
+    }
+
+    public void SpawnManagedNetworkedObject(byte prefabId, Vector3 position, Quaternion rotation)
+    {
+        var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, _objectId, position, rotation);
+        if (networkedObject == null)
+        {
+            Debug.LogWarning($"Could not spawn prefab with id {prefabId}");
+            return;
+        }
+
+        AddToManagedObjectsList(networkedObject);
+    }
+
+    public void SpawnManagedNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
+    {
+        var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, _objectId, position, rotation);
+        if (networkedObject == null)
+        {
+            Debug.LogWarning($"Could not spawn prefab {prefabName}");
+            return;
+        }
+
+        AddToManagedObjectsList(networkedObject);
+    }
+
+    public void SpawnNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
+    {
+        var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, _objectId, position, rotation);
+        if (networkedObject == null)
+        {
+            Debug.LogWarning($"Could not spawn prefab {prefabName}");
+            return;
+        }
+
+        OdinSpawnPrefabMessage message =
+            new OdinSpawnPrefabMessage(networkedObject.PrefabId, _objectId, position, rotation);
+        OdinNetworkManager.Instance.SendMessage(message, false);
+
+        _objectId++;
+    }
+
+
+    public void DestroyNetworkedObject(OdinNetworkedObject networkedObject)
+    {
+        if (networkedObject.Owner != this)
+        {
+            Debug.LogWarning($"Could not destroy networked object as I am not the owner of it");
+            return;
+        }
+
+        ManagedObjects.Remove(networkedObject);
+        DestroyImmediate(networkedObject.gameObject);
+    }
+    
+    protected void DestroyDeprecatedSpawnedObjects()
+    {
+        foreach (var spawnedObject in ManagedObjects.ToArray())
+        {
+            if (spawnedObject.IsUpdated == false)
+            {
+                DestroyNetworkedObject(spawnedObject);
+            }
+        }
+    }
+
+    protected void PreparedSpawnedObjectsForUpdate()
+    {
+        foreach (var spawnedObject in ManagedObjects)
+        {
+            spawnedObject.IsUpdated = false;
+        }
     }
 }

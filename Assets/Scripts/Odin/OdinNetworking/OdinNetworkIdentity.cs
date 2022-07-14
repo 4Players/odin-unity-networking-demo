@@ -20,19 +20,8 @@ namespace Odin.OdinNetworking
         [Tooltip("Sync the animator")]
         [SerializeField] public bool SyncAnimator = true;
 
-        [Tooltip("The number of seconds until the next update is sent")]
-        public float SendInterval = 0.1f;
-        
-        private OdinNetworkWriter _lastUserData = null;
-        private OdinNetworkWriter _lastNetworkedObjectUpdate = null;
-        Dictionary<int, OdinNetworkWriter> _lastNetworkedObjectStates = new Dictionary<int, OdinNetworkWriter>();
-        private float _lastSent;
-
         public Animator _animator;
-
-        public List<OdinNetworkedObject> SpawnedObjects { get; } = new List<OdinNetworkedObject>();
-        private byte _objectId = 0;
-
+        
         public override void OnStartClient()
         {
             // Get Animator
@@ -45,10 +34,7 @@ namespace Odin.OdinNetworking
             // physics calculation
             if (!IsLocalPlayer())
             {
-                foreach (var rb in GetComponentsInChildren<Rigidbody>())
-                {
-                    rb.isKinematic = true;
-                }
+                IsKinetic = true;
             }
         }
 
@@ -104,7 +90,7 @@ namespace Odin.OdinNetworking
 
             message.SyncVars = CompileSyncVars();
             
-            foreach (var networkedObject in SpawnedObjects)
+            foreach (var networkedObject in ManagedObjects)
             {
                 var transform = new OdinUserDataTransform(networkedObject.transform.localPosition, networkedObject.transform.localRotation, networkedObject.transform.localScale);
                 var managedObject =
@@ -144,7 +130,15 @@ namespace Odin.OdinNetworking
                 var position = spawnPrefabMessgage.Position;
                 var rotation = spawnPrefabMessgage.Rotation;
                 OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, objectId, position, rotation);
+            } else if (message.MessageType == OdinMessageType.Command)
+            {
+                OnCommandReceived((OdinCommandMessage)message);    
             }
+        }
+
+        public virtual void OnCommandReceived(OdinCommandMessage message)
+        {
+            
         }
 
         public virtual void OnUpdatedFromNetwork(OdinUserDataUpdateMessage message)
@@ -198,7 +192,7 @@ namespace Odin.OdinNetworking
                         networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, managedObject.PrefabId, managedObject.ObjectId, Vector3.zero, Quaternion.identity);
                         networkedObject.OnUpdatedFromNetwork(managedObject, false);
                         networkedObject.IsUpdated = true;
-                        SpawnedObjects.Add(networkedObject);
+                        ManagedObjects.Add(networkedObject);
                     }
                 }
             
@@ -207,28 +201,9 @@ namespace Odin.OdinNetworking
             }
         }
 
-        private void DestroyDeprecatedSpawnedObjects()
-        {
-            foreach (var spawnedObject in SpawnedObjects.ToArray())
-            {
-                if (spawnedObject.IsUpdated == false)
-                {
-                    DestroyNetworkedObject(spawnedObject);
-                }
-            }
-        }
-
-        private void PreparedSpawnedObjectsForUpdate()
-        {
-            foreach (var spawnedObject in SpawnedObjects)
-            {
-                spawnedObject.IsUpdated = false;
-            }
-        }
-
         public OdinNetworkedObject FindNetworkedObject(byte objectId)
         {
-            foreach (var networkedObject in SpawnedObjects)
+            foreach (var networkedObject in ManagedObjects)
             {
                 if (networkedObject.ObjectId == objectId)
                 {
@@ -237,74 +212,6 @@ namespace Odin.OdinNetworking
             }
 
             return null;
-        }
-        
-        public bool IsLocalPlayer()
-        {
-            return OdinNetworkManager.Instance.LocalPlayer == this;
-        }
-
-        public void SpawnManagedNetworkedObject(GameObject prefab, Vector3 position, Quaternion rotation)
-        {
-            SpawnManagedNetworkedObject(prefab.name, position, rotation);
-        }
-
-        private void AddToSpawnedObjectsList(OdinNetworkedObject networkedObject)
-        {
-            SpawnedObjects.Add(networkedObject);
-            _objectId++;
-        }
-        
-        public void SpawnManagedNetworkedObject(byte prefabId, Vector3 position, Quaternion rotation)
-        {
-            var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, _objectId, position, rotation);
-            if (networkedObject == null)
-            {
-                Debug.LogWarning($"Could not spawn prefab with id {prefabId}");
-                return;
-            }
-            
-            AddToSpawnedObjectsList(networkedObject);
-        }
-
-        public void SpawnManagedNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
-        {
-            var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, _objectId, position, rotation);
-            if (networkedObject == null)
-            {
-                Debug.LogWarning($"Could not spawn prefab {prefabName}");
-                return;
-            }
-            
-            AddToSpawnedObjectsList(networkedObject);
-        }
-
-        public void SpawnNetworkedObject(string prefabName, Vector3 position, Quaternion rotation)
-        {
-            var networkedObject = OdinNetworkManager.Instance.SpawnPrefab(this, prefabName, _objectId, position, rotation);
-            if (networkedObject == null)
-            {
-                Debug.LogWarning($"Could not spawn prefab {prefabName}");
-                return;
-            }
-
-            OdinSpawnPrefabMessage message = new OdinSpawnPrefabMessage(networkedObject.PrefabId, _objectId, position, rotation);
-            OdinNetworkManager.Instance.SendMessage(message, false);
-            
-            _objectId++;
-        }
-        
-
-        public void DestroyNetworkedObject(OdinNetworkedObject networkedObject)
-        {
-            if (networkedObject.Owner != this)
-            {
-                Debug.LogWarning($"Could not destroy networked object as I am not the owner of it");
-                return;
-            }
-
-            SpawnedObjects.Remove(networkedObject);
-            DestroyImmediate(networkedObject.gameObject);
         }
 
         public virtual Transform GetPlaybackComponentContainer(Room room)

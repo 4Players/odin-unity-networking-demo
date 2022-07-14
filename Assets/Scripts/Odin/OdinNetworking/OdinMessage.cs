@@ -9,7 +9,9 @@ namespace Odin.OdinNetworking
     {
         SpawnPrefab,
         JoinServer,
-        UserData
+        UserData,
+        WorldUpdate,
+        Command
     }
 
     // Maximum number of 255 items, as it's stored as a byte in the message stream!
@@ -17,6 +19,7 @@ namespace Odin.OdinNetworking
     {
         Bool,
         Short,
+        Byte,
         String,
         Integer,
         Float,
@@ -70,6 +73,14 @@ namespace Odin.OdinNetworking
             else if (messageType == OdinMessageType.SpawnPrefab)
             {
                 return new OdinSpawnPrefabMessage(reader);
+            } 
+            else if (messageType == OdinMessageType.WorldUpdate)
+            {
+                return new OdinWorldUpdateMessage(reader);
+            }
+            else if (messageType == OdinMessageType.Command)
+            {
+                return new OdinCommandMessage(reader);
             }
 
             return null;
@@ -97,6 +108,85 @@ namespace Odin.OdinNetworking
         {
             OdinNetworkWriter writer = GetWriter();
             return writer.ToBytes();
+        }
+
+        protected void WriteSyncVars(List<OdinUserDataSyncVar> syncVars, OdinNetworkWriter writer)
+        {
+            writer.Write((byte)syncVars.Count);
+            foreach (var syncVar in syncVars)
+            {
+                writer.Write(syncVar.Name);
+                writer.Write(syncVar.Value);
+            }
+        }
+
+        protected List<OdinUserDataSyncVar> ReadSyncVars(OdinNetworkReader reader)
+        {
+            List<OdinUserDataSyncVar> syncVars = new List<OdinUserDataSyncVar>();
+            
+            var numberOfSyncVars = reader.ReadByte();
+            if (numberOfSyncVars > 0)
+            {
+                for (byte i = 0; i < numberOfSyncVars; i++)
+                {
+                    var syncVarName = reader.ReadString();
+                    var receivedValue = reader.ReadObject();
+
+                    OdinUserDataSyncVar syncVar = new OdinUserDataSyncVar(syncVarName, receivedValue);
+                    syncVars.Add(syncVar);
+                }
+            }
+                
+            return syncVars;
+        }
+    }
+
+    public class OdinCommandMessage : OdinMessage
+    {
+        public List<OdinUserDataSyncVar> SyncVars = new List<OdinUserDataSyncVar>();
+        public string Name;
+        
+        public OdinCommandMessage() : base(OdinMessageType.Command)
+        {
+        }
+        
+        public OdinCommandMessage(string name) : base(OdinMessageType.Command)
+        {
+            MessageType = OdinMessageType.Command;
+            Name = name;
+        }
+
+        public OdinCommandMessage(OdinNetworkReader reader) : base(reader)
+        {
+            MessageType = OdinMessageType.Command;
+            Name = reader.ReadString();
+            SyncVars = ReadSyncVars(reader);
+        }
+
+        public void SetValue(string name, object value)
+        {
+            SyncVars.Add(new OdinUserDataSyncVar(name, value));
+        }
+
+        public object GetValue(string name)
+        {
+            foreach (var syncVar in SyncVars)
+            {
+                if (syncVar.Name == name)
+                {
+                    return syncVar.Value;
+                }
+            }
+
+            return null;
+        }
+        
+        public override OdinNetworkWriter GetWriter()
+        {
+            OdinNetworkWriter writer = base.GetWriter();
+            writer.Write(Name);
+            WriteSyncVars(SyncVars, writer);
+            return writer;
         }
     }
 
@@ -197,6 +287,53 @@ namespace Odin.OdinNetworking
         {
             Primitive = primitive;
             Value = value;
+        }
+    }
+
+    public class OdinWorldUpdateMessage : OdinMessage
+    {
+        public List<OdinUserDataSyncVar> SyncVars = new List<OdinUserDataSyncVar>();
+        
+        public List<OdinUserDataManagedObject> ManagedObjects = new List<OdinUserDataManagedObject>();
+        
+        public OdinWorldUpdateMessage() : base(OdinMessageType.WorldUpdate)
+        {
+            
+        }
+        
+        public OdinWorldUpdateMessage(OdinNetworkReader reader) : base(reader)
+        {
+            MessageType = OdinMessageType.WorldUpdate;
+            SyncVars = ReadSyncVars(reader);
+            
+            var numberOfNetworkedObjects = reader.ReadByte();
+            for (var i = 0; i < numberOfNetworkedObjects; i++)
+            {
+                var (objectId, prefabId) = OdinNetworkedObject.DeserializeHeader(reader);
+                var transform = OdinUserDataTransform.FromReader(reader);
+                OdinUserDataManagedObject managedObject = new OdinUserDataManagedObject(objectId, prefabId, transform);
+                var syncVars = ReadSyncVars(reader);
+                managedObject.SyncVars = syncVars;
+                ManagedObjects.Add(managedObject);
+            }
+        }
+        
+        public override OdinNetworkWriter GetWriter()
+        {
+            OdinNetworkWriter writer = base.GetWriter();
+            
+            WriteSyncVars(SyncVars, writer);
+            
+            writer.Write((byte)ManagedObjects.Count);
+            foreach(var managedObject in ManagedObjects)
+            {
+                writer.Write(managedObject.ObjectId);
+                writer.Write(managedObject.PrefabId);
+                managedObject.Transform.ToWriter(writer);
+                WriteSyncVars(managedObject.SyncVars, writer);
+            }
+
+            return writer;
         }
     }
 
@@ -327,36 +464,6 @@ namespace Odin.OdinNetworking
             }
 
             return animationParams;
-        }
-
-        private void WriteSyncVars(List<OdinUserDataSyncVar> syncVars, OdinNetworkWriter writer)
-        {
-            writer.Write((byte)syncVars.Count);
-            foreach (var syncVar in syncVars)
-            {
-                writer.Write(syncVar.Name);
-                writer.Write(syncVar.Value);
-            }
-        }
-        
-        private List<OdinUserDataSyncVar> ReadSyncVars(OdinNetworkReader reader)
-        {
-            List<OdinUserDataSyncVar> syncVars = new List<OdinUserDataSyncVar>();
-            
-            var numberOfSyncVars = reader.ReadByte();
-            if (numberOfSyncVars > 0)
-            {
-                for (byte i = 0; i < numberOfSyncVars; i++)
-                {
-                    var syncVarName = reader.ReadString();
-                    var receivedValue = reader.ReadObject();
-
-                    OdinUserDataSyncVar syncVar = new OdinUserDataSyncVar(syncVarName, receivedValue);
-                    syncVars.Add(syncVar);
-                }
-            }
-                
-            return syncVars;
         }
     }
 }

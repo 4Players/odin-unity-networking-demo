@@ -1,4 +1,5 @@
 using System.Linq;
+using Cinemachine;
 using OdinNative.Odin.Room;
 using OdinNetworking;
 using StarterAssets;
@@ -14,7 +15,8 @@ namespace Odin.OdinNetworking
         
         public TextMeshPro playerName;
 
-        public Transform mouthGameObject;
+        public OdinEars odinEars;
+        public OdinMouth odinMouth;
 
         [OdinSyncVar(hook = nameof(OnNameChanged))]
         public string Name;
@@ -36,7 +38,23 @@ namespace Odin.OdinNetworking
             _input = GetComponent<StarterAssetsInputs>();
             _characterController = GetComponent<CharacterController>();
             _playerInput = GetComponent<PlayerInput>();   
-            _thirdPersonController = GetComponent<ThirdPersonController>();   
+            _thirdPersonController = GetComponent<ThirdPersonController>();
+
+            if (!odinEars)
+            {
+                odinEars = GetComponentInChildren<OdinEars>(true);
+            }
+
+            if (!odinMouth)
+            {
+                odinMouth = GetComponentInChildren<OdinMouth>(true);
+            }
+
+            // Disable the ears (i.e. AudioListener) - we later enable it for the local player in OnLocalClientConnected
+            if (odinEars)
+            {
+                odinEars.gameObject.SetActive(false);
+            }
         }
 
         // Start is called before the first frame update
@@ -50,7 +68,21 @@ namespace Odin.OdinNetworking
 
         public override Transform GetPlaybackComponentContainer(Room room)
         {
-            return mouthGameObject != null ? mouthGameObject : gameObject.transform;
+            return odinMouth != null ? odinMouth.transform : gameObject.transform;
+        }
+
+        public override void OnCommandReceived(OdinCommandMessage message)
+        {
+            if (message.Name == "SetForce")
+            {
+                var networkedObject = OdinWorld.Instance.GetNetworkObject((byte)message.GetValue("ObjectId"));
+                if (networkedObject)
+                {
+                    var dir = (Vector3)message.GetValue("PushDir");
+                    Debug.Log($"Adding Push {dir}");
+                    networkedObject.GetComponent<Rigidbody>().AddForce(dir * 6.0f, ForceMode.Impulse);
+                }
+            }
         }
 
         // Update is called once per frame
@@ -77,9 +109,9 @@ namespace Odin.OdinNetworking
 
             if (Keyboard.current.rKey.wasReleasedThisFrame)
             {
-                if (SpawnedObjects.Count > 0)
+                if (ManagedObjects.Count > 0)
                 {
-                    DestroyNetworkedObject(SpawnedObjects.Last());
+                    DestroyNetworkedObject(ManagedObjects.Last());
                 }
             }
 
@@ -103,6 +135,16 @@ namespace Odin.OdinNetworking
             _characterController.enabled = true;
             _playerInput.enabled = true;
             _thirdPersonController.enabled = true;
+
+            // Activate our ears as this player is the local player
+            odinEars.gameObject.SetActive(true);
+
+            var virtualCamera = FindObjectOfType<CinemachineVirtualCamera>();
+            if (virtualCamera)
+            {
+                virtualCamera.Follow = transform;
+                virtualCamera.LookAt = transform;
+            }
         }
 
 
