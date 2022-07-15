@@ -47,7 +47,7 @@ namespace Odin.OdinNetworking
             return null;
         }
         
-        private void Awake()
+        private void OnEnable()
         {
             if (Instance != null && Instance != this)
             {
