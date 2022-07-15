@@ -32,4 +32,10 @@ public class HUD : MonoBehaviour
             hostImage.color = Color.red;
         }
     }
+
+    public void OnBodyColorChanged(int colorIndex)
+    {
+        var player = OdinNetworkManager.Instance.LocalPlayer.GetComponent<Player>();
+        player.BodyColor = colorIndex;
+    }
 }

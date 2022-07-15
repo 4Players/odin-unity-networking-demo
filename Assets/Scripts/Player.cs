@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Cinemachine;
 using Odin.OdinNetworking;
+using OdinNetworking;
 using StarterAssets;
 using TMPro;
 using UnityEngine;
@@ -22,6 +23,9 @@ public class Player : OdinPlayer
     private Vector2 movement = new Vector2(0, 0);
     private float _nextMovementChange = 0;
 
+    [OdinSyncVar(hook=nameof(OnBodyColorChanged))]
+    public int BodyColor;
+
     private void Awake()
     {
         _input = GetComponent<StarterAssetsInputs>();
@@ -36,6 +40,27 @@ public class Player : OdinPlayer
         Debug.Log($"Added player with peer Id: {Peer.Id}");
 
         Name = $"Player_{Peer.Id}";
+    }
+
+    public void OnBodyColorChanged(int oldColor, int newColor)
+    {
+        Debug.Log("BODY COLOR CHANGED");
+
+        SkinnedMeshRenderer meshRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
+        if (meshRenderer == null) return;
+
+        if (newColor == 0)
+        {
+            meshRenderer.materials[0].color = Color.white;
+        } 
+        else if (newColor == 1)
+        {
+            meshRenderer.materials[0].color = Color.red;
+        }
+        else if (newColor == 2)
+        {
+            meshRenderer.materials[0].color = Color.blue;
+        }
     }
 
     // Update is called once per frame
