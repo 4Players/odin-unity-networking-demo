@@ -64,7 +64,7 @@ public class OdinNetworkItem : MonoBehaviour
 
     }
 
-    protected void ReadSyncVars(List<OdinUserDataSyncVar> syncVars)
+    public void ReadSyncVars(List<OdinUserDataSyncVar> syncVars)
     {
         foreach (var syncVar in syncVars)
         {

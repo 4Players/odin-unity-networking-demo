@@ -104,6 +104,8 @@ namespace Odin.OdinNetworking
             message.IsHost = IsHost();
             if (message.IsHost)
             {
+                message.WorldSyncVars = OdinWorld.Instance.CompileSyncVars();
+                
                 foreach (var networkedObject in OdinWorld.Instance.ManagedObjects)
                 {
                     var transform = new OdinUserDataTransform(networkedObject.transform.localPosition, networkedObject.transform.localRotation, networkedObject.transform.localScale);
@@ -223,6 +225,8 @@ namespace Odin.OdinNetworking
 
             if (message.IsHost)
             {
+                OdinWorld.Instance.ReadSyncVars(message.WorldSyncVars);
+                
                 foreach (var managedObject in message.ManagedWorldObjects)
                 {
                     var networkedObject = OdinWorld.Instance.GetNetworkObject(managedObject.ObjectId);

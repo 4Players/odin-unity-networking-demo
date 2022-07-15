@@ -16,6 +16,7 @@ namespace Odin.OdinNetworking.Messages
 
         public bool IsHost = false;
         public List<OdinUserDataManagedObject> ManagedWorldObjects = new List<OdinUserDataManagedObject>();
+        public List<OdinUserDataSyncVar> WorldSyncVars = new List<OdinUserDataSyncVar>();
 
         public OdinUserDataUpdateMessage() : base(OdinMessageType.UserData)
         {
@@ -51,6 +52,8 @@ namespace Odin.OdinNetworking.Messages
             IsHost = reader.ReadBoolean();
             if (IsHost)
             {
+                WorldSyncVars = ReadSyncVars(reader);
+                
                 var numberOfManagedWorldObjects = reader.ReadByte();
                 for (var i = 0; i < numberOfManagedWorldObjects; i++)
                 {
@@ -87,6 +90,8 @@ namespace Odin.OdinNetworking.Messages
             writer.Write(IsHost);
             if (IsHost)
             {
+                WriteSyncVars(WorldSyncVars, writer);
+                
                 writer.Write((byte)ManagedWorldObjects.Count);
                 foreach(var managedObject in ManagedWorldObjects)
                 {
