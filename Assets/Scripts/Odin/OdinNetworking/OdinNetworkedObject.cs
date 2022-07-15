@@ -39,13 +39,6 @@ public class OdinNetworkedObject : OdinNetworkItem
         Owner.DestroyNetworkedObject(this);
     }
 
-    public static (byte, byte) DeserializeHeader(OdinNetworkReader reader)
-    {
-        var objectId = reader.ReadByte();
-        var prefabId = reader.ReadByte();
-        return (objectId, prefabId);
-    }
-
     public void OnUpdatedFromNetwork(OdinUserDataManagedObject managedObject, bool tween = true)
     {
         if (tween)
