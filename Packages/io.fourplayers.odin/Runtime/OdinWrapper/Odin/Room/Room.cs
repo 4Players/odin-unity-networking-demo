@@ -43,7 +43,7 @@ namespace OdinNative.Odin.Room
         public Peer.Peer Self { get; private set; }
         private ulong _JoinedId;
         internal ref readonly ulong OwnId => ref _JoinedId;
-        private UserData RoomUserData;
+        public UserData RoomUserData { get; private set; }
         private UserData PeerUserData;
 
         /// <summary>
@@ -296,9 +296,9 @@ namespace OdinNative.Odin.Room
         public bool SendMessage(ulong[] peerIdList, byte[] data)
         {
             if(Test(IsJoined, $"Odin: {ConnectionState.Key} {ConnectionState.Value}")) return false;
-            if(Test(peerIdList != null && peerIdList.Count() > 0, $"Odin: peer list is empty")) return false;
             if(Test(data != null && data.Length > 0, $"Odin: data is empty")) return false;
-            return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, (ulong)peerIdList.Length, data, (ulong)data.Length) == Utility.OK;
+
+            return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, peerIdList != null ? (ulong)peerIdList.Length : 0, data, (ulong)data.Length) == Utility.OK;
         }
 
         /// <summary>
@@ -311,11 +311,10 @@ namespace OdinNative.Odin.Room
         public async Task<bool> SendMessageAsync(ulong[] peerIdList, byte[] data)
         {
             if (Test(IsJoined, $"Odin: {ConnectionState.Key} {ConnectionState.Value}")) return false;
-            if (Test(peerIdList != null && peerIdList.Count() > 0, $"Odin: peer list is empty")) return false;
             if (Test(data != null && data.Length > 0, $"Odin: data is empty")) return false;
 
             return await Task.Run(() => {
-                return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, (ulong)peerIdList.Length, data, (ulong)data.Length) == Utility.OK;
+                return OdinLibrary.Api.RoomSendMessage(_Handle, peerIdList, peerIdList != null ? (ulong)peerIdList.Length : 0, data, (ulong)data.Length) == Utility.OK;
             });
         }
 
@@ -323,12 +322,12 @@ namespace OdinNative.Odin.Room
         /// Sends arbitrary data to a all remote peers in this room.
         /// </summary>
         /// <param name="data">arbitrary byte array</param>
-        /// <param name="includeSelf">idicates whether this current peer get the message too</param>
+        /// <param name="includeSelf">idicates whether this current peer id</param>
         /// <returns>true if data was send or false</returns>
         public bool BroadcastMessage(byte[] data, bool includeSelf = false)
         {
-            IEnumerable<ulong> peerIds = includeSelf ? RemotePeers.Select(p => p.Id) : RemotePeers.Where(p => p.Id != OwnId).Select(p => p.Id);
-            return SendMessage(peerIds.ToArray(), data);
+            ulong[] peerIds = includeSelf ? GetRemotePeersIds(includeSelf).Cast<ulong>().ToArray() : null;
+            return SendMessage(peerIds, data);
         }
 
         /// <summary>
@@ -339,8 +338,17 @@ namespace OdinNative.Odin.Room
         /// <returns>true if data was send or false</returns>
         public async Task<bool> BroadcastMessageAsync(byte[] data, bool includeSelf = false)
         {
-            ulong[] peerIds = includeSelf ? RemotePeers.Select(p => p.Id).ToArray() : RemotePeers.Where(p => p.Id != OwnId).Select(p => p.Id).ToArray();
+            ulong[] peerIds = includeSelf ? GetRemotePeersIds(includeSelf).Cast<ulong>().ToArray() : null;
             return await SendMessageAsync(peerIds, data);
+        }
+
+        private List<ulong> GetRemotePeersIds(bool includeSelf)
+        {
+            var result = RemotePeers.Select(p => p.Id).ToList();
+            if(includeSelf)
+                result.Add(Self.Id);
+
+            return result;
         }
 
         /// <summary>

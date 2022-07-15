@@ -170,7 +170,7 @@ namespace OdinNative.Unity.Audio
 
         void OnAudioFilterRead(float[] data, int channels)
         {
-            if (PlaybackMedia == null || PlaybackMedia.IsMuted || RedirectPlaybackAudio == false) return;
+            if (_isDestroying || PlaybackMedia == null || PlaybackMedia.IsMuted || RedirectPlaybackAudio == false) return;
 
             if (!UseResampler && ReadBuffer == null)
                 ReadBuffer = new float[data.Length / channels];
@@ -185,9 +185,21 @@ namespace OdinNative.Unity.Audio
             }
 
             uint read = PlaybackMedia.AudioReadData(ReadBuffer, ReadBuffer.Length);
+            if (Utility.IsError(read))
+            {
+                Debug.LogError($"{nameof(PlaybackComponent)} AudioReadData failed with error code {read}");
+                return;
+            }
+
             if (UseResampler)
             {
                 uint readResampled = PlaybackMedia.AudioResample(ReadBuffer, (uint)UnitySampleRate, ResampleBuffer, ResampleBuffer.Length);
+                if (Utility.IsError(readResampled))
+                {
+                    Debug.LogError($"{nameof(PlaybackComponent)} AudioResample failed with error code {readResampled}");
+                    return;
+                }
+
                 SetData(ResampleBuffer, 0, (int)readResampled);
             }
             else
@@ -221,8 +233,11 @@ namespace OdinNative.Unity.Audio
             ResampleBuffer = null;
         }
 
+        private bool _isDestroying = false;
         private void OnDestroy()
         {
+            _isDestroying = true;
+
             if (AutoDestroyAudioSource)
                 Destroy(PlaybackSource);
 
