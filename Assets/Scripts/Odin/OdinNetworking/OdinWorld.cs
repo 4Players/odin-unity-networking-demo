@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.Design;
+using Odin.OdinNetworking.Messages;
 using UnityEngine;
 
 namespace Odin.OdinNetworking
