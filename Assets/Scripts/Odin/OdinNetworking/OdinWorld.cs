@@ -62,7 +62,6 @@ namespace Odin.OdinNetworking
             {
                 if (networkedObject.Owner == null)
                 {
-                    networkedObject.IsKinetic = true;
                     AddToManagedObjectsList(networkedObject);
                 }
             }
