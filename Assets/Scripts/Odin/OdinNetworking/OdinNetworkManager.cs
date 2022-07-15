@@ -117,16 +117,32 @@ namespace Odin.OdinNetworking
             startPositionIndex = 0;
         }
 
+        private void HandleRoomUserData(byte[] roomUserData)
+        {
+            OdinMessage message = OdinMessage.FromBytes(roomUserData);
+            // The message came from this peer
+            if (message == null)
+            {
+                return;
+            }
+
+            if (message.MessageType == OdinMessageType.UserData)
+            {
+                Peer host = GetHost();
+                var networkedObject = FindNetworkIdentityWithPeerId(host.Id);
+                networkedObject.OnUpdatedFromNetwork((OdinUserDataUpdateMessage)message);   
+            } 
+            else if (message.MessageType == OdinMessageType.WorldUpdate)
+            {
+                OdinWorld.Instance.OnUpdatedFromNetwork((OdinWorldUpdateMessage)message);
+            }
+        }
+
         private void OnRoomUserDataChanged(object sender, RoomUserDataChangedEventArgs eventArgs)
         {
             Debug.Log($"Received room update data with length {eventArgs.Data.Buffer.Length}");
             
-            OdinWorldUpdateMessage message = (OdinWorldUpdateMessage)OdinMessage.FromBytes(eventArgs.Data);
-            // The message came from this peer
-            if (message != null)
-            {
-                World.OnUpdatedFromNetwork(message);   
-            }
+            HandleRoomUserData(eventArgs.Data);
         }
         
         private void OnMediaAdded(object sender, MediaAddedEventArgs eventArgs)
@@ -259,6 +275,10 @@ namespace Odin.OdinNetworking
                     Debug.LogError($"Unknown Message Type on client connection: {message.MessageType}");
                 }
             }
+            else
+            {
+                Debug.LogWarning($"Peer does not have any data {peer.Id}");
+            }
             var player = AddPlayer(peer, playerPrefab, position, rotation);
             player.OnStartClient();
         }
@@ -302,6 +322,12 @@ namespace Odin.OdinNetworking
 
             LocalPlayer.OnStartClient();
             LocalPlayer.OnStartLocalClient();
+            
+            // If we have room data, make sure to update the host
+            if (!room.RoomUserData.IsEmpty())
+            {
+                HandleRoomUserData(room.RoomUserData);
+            }
         }
 
         public void UpdateRoomData(OdinNetworkWriter writer)
@@ -333,11 +359,31 @@ namespace Odin.OdinNetworking
 
         public bool IsHost()
         {
+            if (_room == null)
+            {
+                return false;
+            }
+            
             return GetHost().Id == LocalPlayer.Peer.Id;
+        }
+
+        public OdinNetworkIdentity GetHostIdentity()
+        {
+            var hostPeer = GetHost();
+            if (hostPeer == null) return null;
+
+            return FindNetworkIdentityWithPeerId(hostPeer.Id);
         }
 
         public Peer GetHost()
         {
+            if (_room == null)
+            {
+                return null;
+            } 
+            
+            
+            
             // TODO: This is the worst way to do it, but we need a deterministic way of figuring out a host
             // that is the same for all clients in the network without sending data around
             for (ulong i = 0; i < 1000; i++)

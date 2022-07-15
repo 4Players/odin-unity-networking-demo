@@ -124,8 +124,14 @@ namespace Odin.OdinNetworking
             // Compare if things have changed, then send an update
             if (!userData.IsEqual(_lastUserData))
             {
-                Debug.Log($"Sending user data update: {userData.Cursor}");
-                OdinNetworkManager.Instance.SendUserDataUpdate(userData);
+                if (IsHost())
+                {
+                    OdinNetworkManager.Instance.UpdateRoomData(userData);
+                }
+                else
+                {
+                    OdinNetworkManager.Instance.SendUserDataUpdate(userData);                    
+                }
             }
 
             // Store last user data
