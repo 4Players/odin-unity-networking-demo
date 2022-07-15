@@ -54,7 +54,6 @@ public class OdinNetworkItem : MonoBehaviour
             if (syncVar != null)
             {
                 Debug.Log($"Found sync var: {field.Name} with hook: {syncVar.hook}");
-
                 _syncVars[field.Name] = new OdinSyncVarInfo { FieldInfo = field, OdinSyncVar = syncVar, LastValue = field.GetValue(this) };
             }
         }        
@@ -94,7 +93,7 @@ public class OdinNetworkItem : MonoBehaviour
 
         if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
         {
-            var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook);
+            var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
             if (hookMethod != null)
             {
                 hookMethod.Invoke(this, new[]{oldValue, newValue});
