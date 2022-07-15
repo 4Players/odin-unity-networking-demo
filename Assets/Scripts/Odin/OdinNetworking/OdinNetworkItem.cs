@@ -158,7 +158,7 @@ public class OdinNetworkItem : MonoBehaviour
     
     public bool IsHost()
     {
-        return OdinNetworkManager.Instance.LocalPlayer == OdinNetworkManager.Instance.Host;
+        return OdinNetworkManager.Instance.LocalPlayer.Peer.Id == OdinNetworkManager.Instance.GetHost().Id;
     }
     
     public void SpawnManagedNetworkedObject(GameObject prefab, Vector3 position, Quaternion rotation)

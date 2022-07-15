@@ -55,8 +55,7 @@ namespace Odin.OdinNetworking
 
         private Room _room;
         public OdinPlayer LocalPlayer { get; private set; }
-        public OdinPlayer Host { get; private set; }
-        
+
         public static OdinNetworkManager Instance { get; private set; }
         
         /// <summary>List of transforms populated by NetworkStartPositions</summary>
@@ -289,16 +288,6 @@ namespace Odin.OdinNetworking
             
             LocalPlayer = AddPlayer(room.Self, playerPrefab, position, rotation);
             
-            // Check out if we are first
-            if (room.RemotePeers.Count <= 0 && Host == null)
-            {
-                // I am the first to connect, so I am the host
-                Host = LocalPlayer;
-                if (World != null)
-                {
-                    World.SetOwner(Host);
-                }
-            }
             /*
             else
             {
@@ -342,18 +331,30 @@ namespace Odin.OdinNetworking
             ThreadPool.QueueUserWorkItem(SendMessageWorker, workerItem);
         }
 
+        public bool IsHost()
+        {
+            return GetHost().Id == LocalPlayer.Peer.Id;
+        }
+
         public Peer GetHost()
         {
-            if (_room.RemotePeers.Count < 1)
+            // TODO: This is the worst way to do it, but we need a deterministic way of figuring out a host
+            // that is the same for all clients in the network without sending data around
+            for (ulong i = 0; i < 1000; i++)
             {
-                return null;
+                if (_room.Self.Id == i)
+                {
+                    return _room.Self;
+                }
+
+                Peer peer = _room.RemotePeers[i];
+                if (peer != null)
+                {
+                    return peer;
+                }
             }
 
-            foreach (var peer in _room.RemotePeers)
-            {
-                return peer;
-            }
-
+            Debug.LogError("No peer found");
             return null;
         }
 
