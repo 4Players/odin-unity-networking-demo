@@ -237,6 +237,7 @@ namespace Odin.OdinNetworking
         {
             var finalBytes = new byte[Cursor];
             Buffer.BlockCopy(_bytes, 0, finalBytes, 0, Cursor);
+            //Debug.Log($"Uncompressed data with size {finalBytes.Length}%");
             return finalBytes;
         }
         
@@ -244,7 +245,7 @@ namespace Odin.OdinNetworking
         {
             var finalBytes = GetUncompressedBytes();
             var compressedBytes = Compress(finalBytes);
-            Debug.Log($"Compressed data {compressedBytes.Length} vs. uncompressed {finalBytes.Length}, {Mathf.Round(((float)compressedBytes.Length / (float)finalBytes.Length)*100f)}%");
+            //Debug.Log($"Compressed data {compressedBytes.Length} vs. uncompressed {finalBytes.Length}, {Mathf.Round(((float)compressedBytes.Length / (float)finalBytes.Length)*100f)}%");
             return compressedBytes;
         }
 
