@@ -1,6 +1,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using Odin.OdinNetworking;
+using Odin.OdinNetworking.Messages;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
@@ -9,6 +10,8 @@ public class HUD : MonoBehaviour
 {
     public TMP_InputField nameInputField;
     public Image hostImage;
+    public Button connectButton;
+    public TMP_Dropdown bodyColor;
 
     void Start()
     {
@@ -31,11 +34,23 @@ public class HUD : MonoBehaviour
         {
             hostImage.color = Color.red;
         }
+
+        connectButton.gameObject.SetActive(!OdinNetworkManager.Instance.IsConnected);
     }
 
     public void OnBodyColorChanged(int colorIndex)
     {
-        var player = OdinNetworkManager.Instance.LocalPlayer.GetComponent<Player>();
-        player.BodyColor = colorIndex;
+        if (OdinNetworkManager.Instance.IsConnected)
+        {
+            var player = OdinNetworkManager.Instance.LocalPlayer.GetComponent<Player>();
+            player.BodyColor = colorIndex;    
+        }
+    }
+
+    public void OnConnectPressed()
+    {
+        OdinUserDataUpdateMessage message = (OdinUserDataUpdateMessage)OdinNetworkManager.Instance.GetJoinMessage();
+        message.SyncVars.Add(new OdinUserDataSyncVar("BodyColor", bodyColor.value));
+        OdinNetworkManager.Instance.Connect(message);
     }
 }
