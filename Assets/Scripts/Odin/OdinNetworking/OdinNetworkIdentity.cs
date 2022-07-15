@@ -21,6 +21,7 @@ namespace Odin.OdinNetworking
         [Tooltip("Sync the animator")]
         [SerializeField] public bool SyncAnimator = true;
 
+        [Tooltip("The animator used to sync animation if SyncAnimator is true. If not set the script will search for it in the hierarchy.")]
         public Animator _animator;
         
         public override void OnStartClient()

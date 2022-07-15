@@ -8,11 +8,14 @@ namespace Odin.OdinNetworking
     public class OdinPlayer : OdinNetworkIdentity
     {
         [Header("Player Settings")]
-        
+        [Tooltip("Set an OdinEars instance. It's where the AudioListener and special AudioEffects are handled. If not set, it will seek in the hierarchy for it.")]
         public OdinEars odinEars;
+        
+        [Tooltip("Set an OdinMouth instance. It's where the Audio output is positioned. Position that object near the mouth of the avatar.")]
         public OdinMouth odinMouth;
 
         [OdinSyncVar(hook = nameof(OnNameChanged))]
+        [Tooltip("The name of the player that is used by default.")]
         public string Name;
 
         protected void OnEnable()

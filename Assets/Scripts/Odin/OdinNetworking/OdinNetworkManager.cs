@@ -35,8 +35,12 @@ namespace Odin.OdinNetworking
     
     public class OdinNetworkManager : MonoBehaviour
     {
+        [Header("Room Settings")]
         [Tooltip("The name of the room where players join per default.")]
         [SerializeField] private string roomName = "World";
+        
+        [Tooltip("Automatically connect to the room with default parameters. Otherwise you need to call the Connect function.")]
+        [SerializeField] private bool autoConnect = false; 
         
         [Header("Player spawning")]
         [Tooltip("This is the player prefab that will be instantiated for each player connecting to the same room")]
@@ -64,6 +68,8 @@ namespace Odin.OdinNetworking
 
         public OdinWorld World { get; private set;  }
 
+        public bool IsConnected => _room != null;
+        
         void Awake()
         {
             if (Instance != null && Instance != this)
@@ -94,9 +100,11 @@ namespace Odin.OdinNetworking
                 OdinHandler.Instance.OnMediaAdded.AddListener(OnMediaAdded);
                 OdinHandler.Instance.OnMediaRemoved.AddListener(OnMediaRemoved);                
             }
-            
-            OdinMessage message = GetJoinMessage();
-            OdinHandler.Instance.JoinRoom(roomName, message);
+
+            if (autoConnect)
+            {
+                Connect();
+            }
         }
 
         private void OnDestroy()
@@ -115,6 +123,29 @@ namespace Odin.OdinNetworking
             }
 
             startPositionIndex = 0;
+        }
+
+        public void Connect()
+        {
+            OdinMessage message = GetJoinMessage();
+            OdinHandler.Instance.JoinRoom(roomName, message);
+        }
+
+        public void Connect(string roomName)
+        {
+            this.roomName = roomName;
+            Connect();
+        }
+
+        public void Connect(OdinUserDataUpdateMessage message)
+        {
+            OdinHandler.Instance.JoinRoom(roomName, message);
+        }
+        
+        public void Connect(string roomName, OdinUserDataUpdateMessage message)
+        {
+            this.roomName = roomName;
+            OdinHandler.Instance.JoinRoom(roomName, message);
         }
 
         private void HandleRoomUserData(byte[] roomUserData)
@@ -256,9 +287,10 @@ namespace Odin.OdinNetworking
         {
             var position = Vector3.zero;
             var rotation = Quaternion.identity;
+            OdinMessage message = null;
             if (!peer.UserData.IsEmpty())
             {
-                OdinMessage message = OdinMessage.FromBytes(peer.UserData);
+                message = OdinMessage.FromBytes(peer.UserData);
                 
                 // Check if this user just joined in with a crippled JoinServer Message or a complete User Data object
                 if (message.MessageType == OdinMessageType.UserData)
@@ -280,6 +312,10 @@ namespace Odin.OdinNetworking
                 Debug.LogWarning($"Peer does not have any data {peer.Id}");
             }
             var player = AddPlayer(peer, playerPrefab, position, rotation);
+            if (message != null && message.MessageType == OdinMessageType.UserData)
+            {
+                player.OnUpdatedFromNetwork((OdinUserDataUpdateMessage)message);
+            }
             player.OnStartClient();
         }
 
@@ -299,15 +335,19 @@ namespace Odin.OdinNetworking
         {
             var position = Vector3.zero;
             var rotation = Quaternion.identity;
+            OdinUserDataUpdateMessage message = null;
             if (!room.Self.UserData.IsEmpty())
             {
-                OdinUserDataUpdateMessage message = (OdinUserDataUpdateMessage)OdinMessage.FromBytes(room.Self.UserData);
+                message = (OdinUserDataUpdateMessage)OdinMessage.FromBytes(room.Self.UserData);
                 position = message.HasTransform ? message.Transform.Position : Vector3.zero;
                 rotation = message.HasTransform ? message.Transform.Rotation : Quaternion.identity;    
             }
             
             LocalPlayer = AddPlayer(room.Self, playerPrefab, position, rotation);
-            
+            if (message != null)
+            {
+                LocalPlayer.OnUpdatedFromNetwork(message);
+            }
             /*
             else
             {
@@ -332,11 +372,8 @@ namespace Odin.OdinNetworking
 
         public void UpdateRoomData(OdinNetworkWriter writer)
         {
-            if (_room == null)
-            {
-                return;
-            }
-            
+            if (!IsConnected) return;
+
             Debug.Log($"Updating Room Data: {writer.Cursor}");
             _room.UpdateRoomUserDataAsync(writer);
         }
@@ -359,10 +396,7 @@ namespace Odin.OdinNetworking
 
         public bool IsHost()
         {
-            if (_room == null)
-            {
-                return false;
-            }
+            if (!IsConnected) return false;
             
             return GetHost().Id == LocalPlayer.Peer.Id;
         }
