@@ -69,6 +69,8 @@ namespace Odin.OdinNetworking
         
         private void FixedUpdate()
         {
+            return;
+            
             if (!IsHost())
             {
                 return;
@@ -81,7 +83,7 @@ namespace Odin.OdinNetworking
             }
         }
 
-        private OdinNetworkWriter CompileUserData()
+        public OdinNetworkWriter CompileUserData()
         {
             OdinWorldUpdateMessage message = new OdinWorldUpdateMessage();
                 

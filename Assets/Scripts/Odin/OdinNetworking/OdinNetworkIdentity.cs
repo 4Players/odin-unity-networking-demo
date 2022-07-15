@@ -100,6 +100,19 @@ namespace Odin.OdinNetworking
                 message.ManagedObjects.Add(managedObject);
             }
 
+            message.IsHost = IsHost();
+            if (message.IsHost)
+            {
+                foreach (var networkedObject in OdinWorld.Instance.ManagedObjects)
+                {
+                    var transform = new OdinUserDataTransform(networkedObject.transform.localPosition, networkedObject.transform.localRotation, networkedObject.transform.localScale);
+                    var managedObject =
+                        new OdinUserDataManagedObject(networkedObject.ObjectId, networkedObject.PrefabId, transform);
+                    managedObject.SyncVars = networkedObject.CompileSyncVars();
+                    message.ManagedWorldObjects.Add(managedObject);
+                }
+            }
+
             return message.GetWriter();
         }
 
@@ -199,6 +212,22 @@ namespace Odin.OdinNetworking
             
                 // Walk through all spawned objects and remove those that were not in the update list
                 DestroyDeprecatedSpawnedObjects();                
+            }
+
+            if (message.IsHost)
+            {
+                foreach (var managedObject in message.ManagedWorldObjects)
+                {
+                    var networkedObject = OdinWorld.Instance.GetNetworkObject(managedObject.ObjectId);
+                    if (networkedObject)
+                    {
+                        networkedObject.OnUpdatedFromNetwork(managedObject);
+                    }
+                    else
+                    {
+                        // Seems to be a new World Object
+                    }
+                }
             }
         }
 
