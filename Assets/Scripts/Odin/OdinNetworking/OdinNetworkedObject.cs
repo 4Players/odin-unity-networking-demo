@@ -3,7 +3,7 @@ using ElRaccoone.Tweens;
 using Odin.OdinNetworking.Messages;
 using UnityEngine;
 
-public class OdinNetworkedObject : OdinNetworkItem
+namespace Odin.OdinNetworking
 {
     [HideInInspector]
     public OdinNetworkItem Owner;
