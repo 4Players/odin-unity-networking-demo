@@ -62,6 +62,8 @@ namespace Odin.OdinNetworking
                     AddToManagedObjectsList(networkedObject);
                 }
             }
+            
+            OnAwakeClient();
         }
         
         private void FixedUpdate()

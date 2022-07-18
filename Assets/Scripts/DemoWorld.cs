@@ -11,11 +11,6 @@ public class DemoWorld : OdinWorld
     [OdinSyncVar(hook = nameof(OnLightEnabled))]
     public bool lightEnabled = true;
 
-    private void Awake()
-    {
-        OnAwakeClient();
-    }
-
     // Start is called before the first frame update
     void Start()
     {
