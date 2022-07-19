@@ -13,7 +13,10 @@ namespace Odin.OdinNetworking.Messages
         Command
     }
 
-    // Maximum number of 255 items, as it's stored as a byte in the message stream!
+    /// <summary>
+    /// Defines supported primitives of OdinNetworking. You can build more complex structures out of those primitives.
+    /// </summary>
+    /// <remarks>Maximum number of 255 items, as it's stored as a byte in the message stream!</remarks>
     public enum OdinPrimitive
     {
         Bool,
@@ -29,25 +32,58 @@ namespace Odin.OdinNetworking.Messages
         Quaternion
     }
     
+    /// <summary>
+    /// This is the base class of a message. A message has a type and properties that are finally serialized into
+    /// a <see cref="Odin.OdinNetworking.OdinNetworkWriter"/> which represents a byte array sent over the network.
+    /// </summary>
+    /// <remarks>The whole message system might seem as overkill, as items could serialize directly to a network
+    /// writer instead of serializing into a message instance and then using that to write a byte array. As byte arrays
+    /// need to be read in the exact same order as its been written, and its not really human readable, errors are very
+    /// hard to find. Therefore it's easer to have reading and writing in the same class rather than distributed over
+    /// various classes. It also allows for optimization at central points of the network like bit compression, etc.
+    /// </remarks>
     public class OdinMessage: IUserData
     {
+        /// <summary>
+        /// The type of the message
+        /// </summary>
         public OdinMessageType MessageType;
 
+        /// <summary>
+        /// Creates an instance of OdinMessage of a specific type. Don't create OdinMessage class instances, but instead
+        /// create instances of subclasses.
+        /// </summary>
+        /// <param name="type">The message type</param>
         public OdinMessage(OdinMessageType type)
         {
             MessageType = type;
         }
 
+        /// <summary>
+        /// Create an instance of a message based on a reader 
+        /// </summary>
+        /// <param name="reader">The reader containing the byte array of data received from the network</param>
         public OdinMessage(OdinNetworkReader reader)
         {
             
         }
         
+        /// <summary>
+        /// Creates an instance with the bytes received from the network.
+        /// </summary>
+        /// <param name="bytes"></param>
         public OdinMessage(byte[] bytes)
         {
             
         }
 
+        /// <summary>
+        /// A static function that reads the first byte of the data stream to identify the message type and then creates
+        /// an instance of the corresponding subclass.
+        /// </summary>
+        /// <remarks>If you want to have custom messages you need to adjust this function right now.</remarks>
+        /// <param name="reader">The reader containing data received from the network</param>
+        /// <returns>An instance of a subclass based on the message type given in the first byte of the data stream.</returns>
         public static OdinMessage FromReader(OdinNetworkReader reader)
         {
             var messageType = reader.ReadMessageType();
@@ -71,17 +107,32 @@ namespace Odin.OdinNetworking.Messages
             return null;
         }
         
+        /// <summary>
+        /// Creates an instance of a messages subclass for the data received from the network.
+        /// </summary>
+        /// <param name="bytes">The bytes received from the network</param>
+        /// <returns>The message instance</returns>
         public static OdinMessage FromBytes(byte[] bytes)
         {
             OdinNetworkReader reader = new OdinNetworkReader(bytes);
             return FromReader(reader);
         }
 
+        /// <summary>
+        /// Returns true if the message is empty.
+        /// </summary>
+        /// <returns>true if the message is empty (does not contain any customized data)</returns>
         public bool IsEmpty()
         {
             return ToBytes().Length <= 0;
         }
 
+        /// <summary>
+        /// Returns a writer object that will serialize the messages properties into a byte stream so that it can be sent
+        /// over the network
+        /// </summary>
+        /// <remarks>A messages subclass must override this function and call its base class function</remarks>
+        /// <returns></returns>
         public virtual OdinNetworkWriter GetWriter()
         {
             OdinNetworkWriter writer = new OdinNetworkWriter();
@@ -89,12 +140,21 @@ namespace Odin.OdinNetworking.Messages
             return writer;
         }
 
+        /// <summary>
+        /// Return the bytes of the serialized message
+        /// </summary>
+        /// <returns></returns>
         public byte[] ToBytes()
         {
             OdinNetworkWriter writer = GetWriter();
             return writer.ToBytes();
         }
         
+        /// <summary>
+        /// A static function that you can use to write a standard sync vars list into the given writer object.
+        /// </summary>
+        /// <param name="syncVars">A list with sync vars</param>
+        /// <param name="writer">The writer where the sync vars should be serialized</param>
         public static void WriteSyncVars(List<OdinUserDataSyncVar> syncVars, OdinNetworkWriter writer)
         {
             writer.Write((byte)syncVars.Count);
@@ -104,6 +164,11 @@ namespace Odin.OdinNetworking.Messages
             }
         }
 
+        /// <summary>
+        /// A static function that deserialized sync vars previously serialized with WriteSyncVars.
+        /// </summary>
+        /// <param name="reader">The reader from which to deserialize the sync vars</param>
+        /// <returns>A list with deserialized sync vars</returns>
         public static List<OdinUserDataSyncVar> ReadSyncVars(OdinNetworkReader reader)
         {
             List<OdinUserDataSyncVar> syncVars = new List<OdinUserDataSyncVar>();
@@ -120,7 +185,5 @@ namespace Odin.OdinNetworking.Messages
                 
             return syncVars;
         }
-
-        
     }
 }

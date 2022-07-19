@@ -2,7 +2,9 @@ using UnityEngine;
 
 namespace Odin.OdinNetworking
 {
-    /// <summary>Start position for player spawning, automatically registers itself in the OdinNetworkManager.</summary>
+    /// <summary>
+    /// Start position for player spawning, automatically registers itself in the OdinNetworkManager.
+    /// </summary>
     [DisallowMultipleComponent]
     public class OdinNetworkSpawnPosition : MonoBehaviour
     {

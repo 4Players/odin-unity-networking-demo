@@ -2,7 +2,6 @@ using System;
 using System.Collections;
 using System.Collections.Generic;
 using Odin.OdinNetworking;
-using OdinNetworking;
 using UnityEngine;
 using UnityEngine.Experimental.GlobalIllumination;
 

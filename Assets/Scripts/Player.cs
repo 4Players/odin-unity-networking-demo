@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using Cinemachine;
 using Odin.OdinNetworking;
-using OdinNetworking;
+using Odin.OdinNetworking.Messages;
 using StarterAssets;
 using TMPro;
 using UnityEngine;
@@ -62,13 +62,31 @@ public class Player : OdinPlayer
             meshRenderer.materials[0].color = Color.blue;
         }
     }
+    
+    /// <summary>
+    /// Handles 
+    /// </summary>
+    /// <param name="message"></param>
+    public override void OnCommandReceived(OdinCommandMessage message)
+    {
+        if (message.Name == "SetForce")
+        {
+            var networkedObject = OdinWorld.Instance.GetNetworkObject((byte)message.GetValue("ObjectId"));
+            if (networkedObject)
+            {
+                var dir = (Vector3)message.GetValue("PushDir");
+                Debug.Log($"Adding Push {dir}");
+                networkedObject.GetComponent<Rigidbody>().AddForce(dir * 6.0f, ForceMode.Impulse);
+            }
+        }
+    }
 
     // Update is called once per frame
     void Update()
     {
         playerName.text = Name;
 
-        if (!IsLocalPlayer())
+        if (!IsLocalPlayer)
         {
             return;
         }
@@ -89,7 +107,7 @@ public class Player : OdinPlayer
         {
             if (ManagedObjects.Count > 0)
             {
-                DestroyNetworkedObject(ManagedObjects.Last());
+                DestroyManagedNetworkedObject(ManagedObjects.Last());
             }
         }
 

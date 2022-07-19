@@ -7,6 +7,10 @@ using UnityEngine;
 
 namespace Odin.OdinNetworking
 {
+    /// <summary>
+    /// Flags used to compress transforms. Instead of always sending 1,1,1 or 0,0,0 for the position we just set one
+    /// bit to indicate that the default rotation, scale or position should be used.
+    /// </summary>
     [Flags]
     public enum OdinNetworkingFlags: byte
     {
@@ -15,6 +19,18 @@ namespace Odin.OdinNetworking
         HasScale = 4
     }
     
+    /// <summary>
+    /// This class deserializes a byte stream by providing functions to read various primitive types from it. Messages
+    /// are compiled byte streams that are as compact as possible to save bandwidth. This class is used to convert the
+    /// byte stream back to a message object.
+    /// The reader has an internal cursor counter that starts at 0 and advances with each primitive read requested. So,
+    /// the first call to ReadByte will return the first byte, while the second call to ReadByte will be the second byte
+    /// as the first ReadByte call will have set the cursor one byte further.
+    /// </summary>
+    /// <remarks>OdinNetworking uses Gzip compression to make messages as compact as possible. However, for smaller
+    /// messages this does not bring any value, instead the package can be even larger than without compression.
+    /// Our tests indicated that messages larger 100 bytes profit from compression. So the first byte of a message
+    /// indicates if it's compressed or not.</remarks>
     public class OdinNetworkReader
     {
         private byte[] _bytes;
@@ -48,6 +64,11 @@ namespace Odin.OdinNetworking
             }
         }
 
+        /// <summary>
+        /// Read a byte at a specific position in the byte stream
+        /// </summary>
+        /// <param name="index">The index - make sure it's smaller than the size of the array</param>
+        /// <returns>The byte at the index or 0 if out of bounds</returns>
         public byte ReadByteAt(int index)
         {
             if (index < 0 || index >= _bytes.Length)
@@ -58,6 +79,10 @@ namespace Odin.OdinNetworking
             return _bytes[index];
         }
 
+        /// <summary>
+        /// Read a byte from the byte array
+        /// </summary>
+        /// <returns>The byte or 0 if out of bounds</returns>
         public byte ReadByte()
         {
             if (_cursor >= _bytes.Length)
@@ -70,6 +95,10 @@ namespace Odin.OdinNetworking
             return aByte;
         }
 
+        /// <summary>
+        /// Read a short value from the byte stream
+        /// </summary>
+        /// <returns>The short value or 0 if out of bounds</returns>
         public ushort ReadUShort()
         {
             if (_cursor + sizeof(ushort) >= _bytes.Length)
@@ -82,16 +111,33 @@ namespace Odin.OdinNetworking
             return value;
         }
 
+        /// <summary>
+        /// Read the type of the primitive. If different types of primitives can be stored in the message, i.e. a
+        /// value of a sync var, this flag indicates which primitive comes next in the byte stream. This is important
+        /// as different primitives have different length.
+        /// </summary>
+        /// <returns>The primitive type</returns>
         public OdinPrimitive ReadPrimitiveType()
         {
             return (OdinPrimitive)ReadByte();
         }
         
+        /// <summary>
+        /// Read a message type from the byte stream
+        /// </summary>
+        /// <returns>The decoded message type</returns>
         public OdinMessageType ReadMessageType()
         {
             return (OdinMessageType)ReadByte();
         }
 
+        /// <summary>
+        /// Read a transform. A transform is always position, rotation and scale. However, as scale often ist just 1,1,1
+        /// it's packed. The first byte indicates which parts of the transform are available. If scale is default 1,1,1
+        /// just a bit indicates that and the scale is not written to the stream. When decoding the default scale is then
+        /// used.
+        /// </summary>
+        /// <returns>A truple of position, rotation and scale</returns>
         public (Vector3, Quaternion, Vector3) ReadTransform()
         {
             var localPosition = Vector3.zero;
@@ -115,6 +161,10 @@ namespace Odin.OdinNetworking
             return (localPosition, localRotation, localScale);
         }
 
+        /// <summary>
+        /// Read an integer from the stream
+        /// </summary>
+        /// <returns>The integer decoded at the current position</returns>
         public int ReadInt()
         {
             if (_cursor + sizeof(int) >= _bytes.Length)
@@ -127,6 +177,10 @@ namespace Odin.OdinNetworking
             return value;
         }
         
+        /// <summary>
+        /// Read a boolean from the stream.
+        /// </summary>
+        /// <returns>The boolean</returns>
         public bool ReadBoolean()
         {
             if (_cursor + sizeof(bool) >= _bytes.Length)
@@ -139,6 +193,10 @@ namespace Odin.OdinNetworking
             return value;
         }
         
+        /// <summary>
+        /// Read a float from the stream
+        /// </summary>
+        /// <returns>The float or 0.0 if out of bounds</returns>
         public float ReadFloat()
         {
             if (_cursor + sizeof(float) >= _bytes.Length)
@@ -151,6 +209,10 @@ namespace Odin.OdinNetworking
             return value;
         }
         
+        /// <summary>
+        /// Read a double value from the stream. Doubles are very large and should be used sparingly.
+        /// </summary>
+        /// <returns>The double decoded</returns>
         public double ReadDouble()
         {
             if (_cursor + sizeof(double) >= _bytes.Length)
@@ -163,6 +225,10 @@ namespace Odin.OdinNetworking
             return value;
         }
 
+        /// <summary>
+        /// Read a 2D vector
+        /// </summary>
+        /// <returns>The decoded vector.</returns>
         public Vector2 ReadVector2()
         {
             float x = ReadFloat();
@@ -170,6 +236,10 @@ namespace Odin.OdinNetworking
             return new Vector2(x, y);
         }
         
+        /// <summary>
+        /// Read a 3D vector from the stream
+        /// </summary>
+        /// <returns>The 3D vector</returns>
         public Vector3 ReadVector3()
         {
             float x = ReadFloat();
@@ -178,6 +248,10 @@ namespace Odin.OdinNetworking
             return new Vector3(x, y, z);
         }
         
+        /// <summary>
+        /// Read a 4D vector from the stream
+        /// </summary>
+        /// <returns>The vector read</returns>
         public Vector4 ReadVector4()
         {
             float x = ReadFloat();
@@ -187,6 +261,10 @@ namespace Odin.OdinNetworking
             return new Vector4(x, y, z, w);
         }
         
+        /// <summary>
+        /// Read a Quaternion used to represent rotations from the stream
+        /// </summary>
+        /// <returns>The decoded Quaternion</returns>
         public Quaternion ReadQuaternion()
         {
             float x = ReadFloat();
@@ -196,6 +274,11 @@ namespace Odin.OdinNetworking
             return new Quaternion(x, y, z, w);
         }
 
+        /// <summary>
+        /// Read a string from the stream. The string is encoded in UTF8 format. The first two bytes are used to encode
+        /// the length of the string
+        /// </summary>
+        /// <returns>The string decoded from the stream</returns>
         public string ReadString()
         {
             ushort length = ReadUShort();
@@ -204,6 +287,11 @@ namespace Odin.OdinNetworking
             return aString;
         }
 
+        /// <summary>
+        /// Read an object from the stream. An object is a placeholder that can hold many different types of objects.
+        /// The first byte indicates which primitive is encoded next.
+        /// </summary>
+        /// <returns>An object type which can contain bools, vectors, etc.</returns>
         public object ReadObject()
         {
             OdinPrimitive primitive = (OdinPrimitive)ReadByte();
