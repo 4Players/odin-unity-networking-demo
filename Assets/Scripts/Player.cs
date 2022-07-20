@@ -78,6 +78,11 @@ public class Player : OdinPlayer
                 Debug.Log($"Adding Push {dir}");
                 networkedObject.GetComponent<Rigidbody>().AddForce(dir * 6.0f, ForceMode.Impulse);
             }
+        } else if (message.Name == "ToggleLight")
+        {
+            Debug.Log($"Received command {message.Name}: {(bool)message.GetValue("enabled")}");
+            DemoWorld world = (DemoWorld)OdinWorld.Instance;
+            world.lightEnabled = (bool)message.GetValue("enabled");
         }
     }
 
@@ -109,6 +114,14 @@ public class Player : OdinPlayer
             {
                 DestroyManagedNetworkedObject(ManagedObjects.Last());
             }
+        }
+        
+        if (Keyboard.current.lKey.wasReleasedThisFrame)
+        {
+            DemoWorld world = (DemoWorld)OdinWorld.Instance;
+            OdinCommandMessage message = new OdinCommandMessage("ToggleLight");
+            message.SetValue("enabled", !world.lightEnabled);
+            OdinNetworkManager.Instance.SendCommand(message);
         }
 
         if (_input.jump)
