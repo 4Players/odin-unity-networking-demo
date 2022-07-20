@@ -695,6 +695,13 @@ namespace Odin.OdinNetworking
             
             var host = GetHost();
             if (host == null) return;
+
+            // Odin does not allow messages to be sent to yourself. So, if this is the host, fake the network response
+            if (host.Id == LocalPlayer.Peer.Id)
+            {
+                LocalPlayer.OnCommandReceived(message);
+                return;
+            }            
             
             _room.SendMessageAsync(new[]{ host.Id }, message.ToBytes());
         }
