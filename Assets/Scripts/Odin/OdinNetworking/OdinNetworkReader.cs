@@ -121,15 +121,6 @@ namespace Odin.OdinNetworking
         {
             return (OdinPrimitive)ReadByte();
         }
-        
-        /// <summary>
-        /// Read a message type from the byte stream
-        /// </summary>
-        /// <returns>The decoded message type</returns>
-        public OdinMessageType ReadMessageType()
-        {
-            return (OdinMessageType)ReadByte();
-        }
 
         /// <summary>
         /// Read a transform. A transform is always position, rotation and scale. However, as scale often ist just 1,1,1

@@ -209,9 +209,8 @@ namespace Odin.OdinNetworking
         /// </param>
         public virtual void OnMessageReceived(OdinNetworkIdentity sender, OdinMessage message)
         {
-            if (message.MessageType == OdinMessageType.SpawnPrefab)
+            if (message is OdinSpawnPrefabMessage spawnPrefabMessage)
             {
-                var spawnPrefabMessage = (OdinSpawnPrefabMessage)message;
                 var prefabId = spawnPrefabMessage.PrefabId;
                 var objectId = spawnPrefabMessage.ObjectId;
                 var position = spawnPrefabMessage.Position;

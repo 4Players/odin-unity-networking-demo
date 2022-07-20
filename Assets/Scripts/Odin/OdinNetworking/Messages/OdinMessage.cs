@@ -1,18 +1,10 @@
+using System;
 using System.Collections.Generic;
 using OdinNative.Odin;
+using UnityEngine;
 
 namespace Odin.OdinNetworking.Messages
 {
-    // Maximum number of 255 items, as it's stored as a byte in the message stream!
-    public enum OdinMessageType: byte
-    {
-        SpawnPrefab,
-        JoinServer,
-        UserData,
-        WorldUpdate,
-        Command
-    }
-
     /// <summary>
     /// Defines supported primitives of OdinNetworking. You can build more complex structures out of those primitives.
     /// </summary>
@@ -45,34 +37,81 @@ namespace Odin.OdinNetworking.Messages
     public class OdinMessage: IUserData
     {
         /// <summary>
-        /// The type of the message
+        /// A dictionary mapping a byte to a class type. This way, only a byte needs be sent over the network
+        /// to identify a message type.
         /// </summary>
-        public OdinMessageType MessageType;
-
+        private static Dictionary<byte, Type> _messageTypes = new Dictionary<byte, Type>();
+        private static byte _messageTypeId = 1; 
+        
         /// <summary>
-        /// Creates an instance of OdinMessage of a specific type. Don't create OdinMessage class instances, but instead
-        /// create instances of subclasses.
+        /// Register a new message type. This class will create a new entry based on the current message type id and
+        /// will increment an internal message type id counter to the next value. This way, a dictionary is built mapping
+        /// message types to a byte value (identifying the class instance that needs to be created when deserializing a message).
         /// </summary>
-        /// <param name="type">The message type</param>
-        public OdinMessage(OdinMessageType type)
+        /// <remarks>If you create a new message type class, make sure you call the RegisterMessageType before using it</remarks>
+        /// <typeparam name="T">The type of the message class you want to register</typeparam>
+        public static void RegisterMessageType<T>()
         {
-            MessageType = type;
+            _messageTypes.Add(_messageTypeId, typeof(T));
+            _messageTypeId++;
         }
 
         /// <summary>
-        /// Create an instance of a message based on a reader 
+        /// Register built-in message types
         /// </summary>
-        /// <param name="reader">The reader containing the byte array of data received from the network</param>
-        public OdinMessage(OdinNetworkReader reader)
+        static OdinMessage()
+        {
+            RegisterMessageType<OdinSpawnPrefabMessage>();
+            RegisterMessageType<OdinUserDataUpdateMessage>();
+            RegisterMessageType<OdinWorldUpdateMessage>();
+            RegisterMessageType<OdinCommandMessage>();
+        }
+
+        /// <summary>
+        /// Get the message type for a message type id
+        /// </summary>
+        /// <param name="messageTypeId">The id of the message</param>
+        /// <returns>The type if found or null if it does not exist (i.e. RegisterMessageType has not been called)</returns>
+        private static Type GetMessageType(byte messageTypeId)
+        {
+            if (_messageTypes.ContainsKey(messageTypeId))
+            {
+                return _messageTypes[messageTypeId];    
+            }
+
+            return null;
+        }
+
+        /// <summary>
+        /// Get the message type for a message type. This is the value that is sent over the network.
+        /// </summary>
+        /// <param name="messageType">The type of the message</param>
+        /// <returns>0 if nothing has been found (i.e. RegisterMessageType has not been called for this type) or
+        /// the message type id</returns>
+        public static byte GetMessageTypeId(Type messageType)
+        {
+            foreach (var key in _messageTypes.Keys)
+            {
+                var type = GetMessageType(key);
+                if (type == messageType)
+                {
+                    return key;
+                }
+            }
+
+            return 0;
+        }
+        
+        protected OdinMessage()
         {
             
         }
         
         /// <summary>
-        /// Creates an instance with the bytes received from the network.
+        /// Create an instance of a message based on a reader 
         /// </summary>
-        /// <param name="bytes"></param>
-        public OdinMessage(byte[] bytes)
+        /// <param name="reader">The reader containing the byte array of data received from the network</param>
+        protected OdinMessage(OdinNetworkReader reader)
         {
             
         }
@@ -86,25 +125,15 @@ namespace Odin.OdinNetworking.Messages
         /// <returns>An instance of a subclass based on the message type given in the first byte of the data stream.</returns>
         public static OdinMessage FromReader(OdinNetworkReader reader)
         {
-            var messageType = reader.ReadMessageType();
-            if (messageType == OdinMessageType.UserData)
+            var messageTypeId = reader.ReadByte();
+            var messageType = GetMessageType(messageTypeId);
+            if (messageType == null)
             {
-                return new OdinUserDataUpdateMessage(reader);
-            }
-            else if (messageType == OdinMessageType.SpawnPrefab)
-            {
-                return new OdinSpawnPrefabMessage(reader);
-            } 
-            else if (messageType == OdinMessageType.WorldUpdate)
-            {
-                return new OdinWorldUpdateMessage(reader);
-            }
-            else if (messageType == OdinMessageType.Command)
-            {
-                return new OdinCommandMessage(reader);
+                Debug.LogWarning($"Unknown message type {messageTypeId}. You need to register the message type before with OdinMessage.RegisterMessageType.");
+                return null;
             }
 
-            return null;
+            return (OdinMessage)Activator.CreateInstance(messageType, new[] { reader });
         }
         
         /// <summary>
@@ -136,7 +165,14 @@ namespace Odin.OdinNetworking.Messages
         public virtual OdinNetworkWriter GetWriter()
         {
             OdinNetworkWriter writer = new OdinNetworkWriter();
-            writer.Write(MessageType);
+            var messageTypeId = GetMessageTypeId(GetType());
+            if (messageTypeId <= 0)
+            {
+                Debug.LogError("This message type has not been registered. Call RegisterMessageType in its static constructor (see built-in messages for a sample).");
+                return null;
+            }
+            
+            writer.Write(messageTypeId);
             return writer;
         }
 

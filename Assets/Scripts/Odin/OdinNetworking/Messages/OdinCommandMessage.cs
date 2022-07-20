@@ -20,18 +20,14 @@ namespace Odin.OdinNetworking.Messages
         /// The name of the command
         /// </summary>
         public string Name;
-        
-        public OdinCommandMessage() : base(OdinMessageType.Command)
-        {
-        }
+
         
         /// <summary>
         /// Create a command and give it a name.
         /// </summary>
         /// <param name="name">The name of the command.</param>
-        public OdinCommandMessage(string name) : base(OdinMessageType.Command)
+        public OdinCommandMessage(string name)
         {
-            MessageType = OdinMessageType.Command;
             Name = name;
         }
 
@@ -70,9 +66,8 @@ namespace Odin.OdinNetworking.Messages
         /// Deserialize a command from a reader
         /// </summary>
         /// <param name="reader">The reader from which to read the properties</param>
-        public OdinCommandMessage(OdinNetworkReader reader) : base(reader)
+        public OdinCommandMessage(OdinNetworkReader reader)
         {
-            MessageType = OdinMessageType.Command;
             Name = reader.ReadString();
             SyncVars = ReadSyncVars(reader);
         }

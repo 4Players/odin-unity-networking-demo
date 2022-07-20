@@ -55,9 +55,10 @@ namespace Odin.OdinNetworking.Messages
         public List<OdinUserDataSyncVar> WorldSyncVars = new List<OdinUserDataSyncVar>();
 
         /// <summary>
-        /// Create an instance of this struct
+        /// Create an instance of this message. Fill the properties and call GetWriter to serialize the message into a
+        /// byte array that can be sent over the network
         /// </summary>
-        public OdinUserDataUpdateMessage() : base(OdinMessageType.UserData)
+        public OdinUserDataUpdateMessage()
         {
             
         }
@@ -68,8 +69,6 @@ namespace Odin.OdinNetworking.Messages
         /// <param name="reader">The reader from which to read from</param>
         public OdinUserDataUpdateMessage(OdinNetworkReader reader) : base(reader)
         {
-            MessageType = OdinMessageType.UserData;
-            
             HasTransform = reader.ReadBoolean();
             if (HasTransform)
             {

@@ -26,7 +26,7 @@ namespace Odin.OdinNetworking.Messages
         /// The initial rotation of the prefab
         /// </summary>
         public Quaternion Rotation;
-        
+
         /// <summary>
         /// Create an instance of the message
         /// </summary>
@@ -34,9 +34,8 @@ namespace Odin.OdinNetworking.Messages
         /// <param name="objectId">The objectid (unique to the owner)</param>
         /// <param name="position">The position where the prefab is located initially</param>
         /// <param name="rotation">The initial rotation of the prefab</param>
-        public OdinSpawnPrefabMessage(byte prefabId, byte objectId, Vector3 position, Quaternion rotation): base(OdinMessageType.SpawnPrefab)
+        public OdinSpawnPrefabMessage(byte prefabId, byte objectId, Vector3 position, Quaternion rotation)
         {
-            MessageType = OdinMessageType.SpawnPrefab;
             PrefabId = prefabId;
             ObjectId = objectId;
             Position = position;

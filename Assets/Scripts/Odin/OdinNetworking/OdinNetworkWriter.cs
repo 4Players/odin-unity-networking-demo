@@ -183,15 +183,6 @@ namespace Odin.OdinNetworking
         }
         
         /// <summary>
-        /// Write the message type used to identify which message has been encoded next.
-        /// </summary>
-        /// <param name="value">The value that should be stored in the stream</param>
-        public void Write(OdinMessageType value)
-        {
-            Write((byte)value);
-        }
-
-        /// <summary>
         /// Encode a position, rotation and scale (transform). If identity versions are provided those are not encoded.
         /// </summary>
         /// <param name="position">The position to be stored</param>

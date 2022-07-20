@@ -241,15 +241,15 @@ namespace Odin.OdinNetworking
                 return;
             }
 
-            if (message.MessageType == OdinMessageType.UserData)
+            if (message is OdinUserDataUpdateMessage userDataUpdateMessage)
             {
                 Peer host = GetHost();
                 var networkedObject = FindNetworkIdentityWithPeerId(host.Id);
-                networkedObject.OnUpdatedFromNetwork((OdinUserDataUpdateMessage)message);   
+                networkedObject.OnUpdatedFromNetwork(userDataUpdateMessage);   
             } 
-            else if (message.MessageType == OdinMessageType.WorldUpdate)
+            else if (message is OdinWorldUpdateMessage worldUpdateMessage)
             {
-                OdinWorld.Instance.OnUpdatedFromNetwork((OdinWorldUpdateMessage)message);
+                OdinWorld.Instance.OnUpdatedFromNetwork(worldUpdateMessage);
             }
         }
 
@@ -330,12 +330,12 @@ namespace Odin.OdinNetworking
             var networkedObject = FindNetworkIdentityWithPeerId(eventArgs.PeerId);
             if (networkedObject != null)
             {
-                OdinUserDataUpdateMessage
-                    message = (OdinUserDataUpdateMessage)OdinMessage.FromBytes(eventArgs.UserData);
+                OdinMessage message = OdinMessage.FromBytes(eventArgs.UserData);
+                
                 // The message came from this peer
-                if (message.MessageType == OdinMessageType.UserData)
+                if (message is OdinUserDataUpdateMessage userDataUpdateMessage)
                 {
-                    networkedObject.OnUpdatedFromNetwork(message);   
+                    networkedObject.OnUpdatedFromNetwork(userDataUpdateMessage);   
                 }
             }
         }
@@ -382,12 +382,12 @@ namespace Odin.OdinNetworking
             OdinMessage message = OdinMessage.FromReader(reader);
             if (message != null)
             {
-                if (message.MessageType == OdinMessageType.Command)
+                if (message is OdinCommandMessage commandMessage)
                 {
                     // Only send commands to the host
                     if (networkedObject.IsHost)
                     {
-                        networkedObject.OnCommandReceived((OdinCommandMessage)message);
+                        networkedObject.OnCommandReceived(commandMessage);
                     }   
                 }
                 else
@@ -491,10 +491,9 @@ namespace Odin.OdinNetworking
                 message = OdinMessage.FromBytes(peer.UserData);
                 
                 // Check if this user just joined in with a crippled JoinServer Message or a complete User Data object
-                if (message.MessageType == OdinMessageType.UserData)
+                if (message is OdinUserDataUpdateMessage userDataMessage)
                 {
-                    var userDataMessage = (OdinUserDataUpdateMessage)message;
-                    if (userDataMessage != null && userDataMessage.HasTransform)
+                    if (userDataMessage.HasTransform)
                     {
                         position = userDataMessage.Transform.Position;
                         rotation = userDataMessage.Transform.Rotation;
@@ -502,7 +501,7 @@ namespace Odin.OdinNetworking
                 }
                 else
                 {
-                    Debug.LogError($"Unknown Message Type on client connection: {message.MessageType}");
+                    Debug.LogError($"Unknown Message Type on client connection: {message.GetType()}");
                 }
             }
             else
@@ -510,9 +509,9 @@ namespace Odin.OdinNetworking
                 Debug.LogWarning($"Peer does not have any data {peer.Id}");
             }
             var player = AddPlayer(peer, playerPrefab, position, rotation);
-            if (message != null && message.MessageType == OdinMessageType.UserData)
+            if (message != null && message is OdinUserDataUpdateMessage userDataUpdateMessage)
             {
-                player.OnUpdatedFromNetwork((OdinUserDataUpdateMessage)message);
+                player.OnUpdatedFromNetwork(userDataUpdateMessage);
             }
             player.OnStartClient();
         }

@@ -16,11 +16,12 @@ namespace Odin.OdinNetworking.Messages
         /// Managed objects handled by the world (i.e. static objects that are part of the world)
         /// </summary>
         public List<OdinUserDataManagedObject> ManagedObjects = new List<OdinUserDataManagedObject>();
-        
+
         /// <summary>
-        /// Create an instance of the message
+        /// Create an instance of this message. Fill the properties and call GetWriter to serialize the message into a
+        /// byte array that can be sent over the network
         /// </summary>
-        public OdinWorldUpdateMessage() : base(OdinMessageType.WorldUpdate)
+        public OdinWorldUpdateMessage()
         {
             
         }
@@ -31,7 +32,6 @@ namespace Odin.OdinNetworking.Messages
         /// <param name="reader">The reader from which to read the params</param>
         public OdinWorldUpdateMessage(OdinNetworkReader reader) : base(reader)
         {
-            MessageType = OdinMessageType.WorldUpdate;
             SyncVars = ReadSyncVars(reader);
             
             var numberOfNetworkedObjects = reader.ReadByte();
