@@ -101,7 +101,7 @@ namespace Odin.OdinNetworking
         /// <returns>The short value or 0 if out of bounds</returns>
         public ushort ReadUShort()
         {
-            if (_cursor + sizeof(ushort) >= _bytes.Length)
+            if (_cursor >= _bytes.Length)
             {
                 return 0;
             }
@@ -167,7 +167,7 @@ namespace Odin.OdinNetworking
         /// <returns>The integer decoded at the current position</returns>
         public int ReadInt()
         {
-            if (_cursor + sizeof(int) >= _bytes.Length)
+            if (_cursor >= _bytes.Length)
             {
                 return 0;
             }
@@ -183,7 +183,7 @@ namespace Odin.OdinNetworking
         /// <returns>The boolean</returns>
         public bool ReadBoolean()
         {
-            if (_cursor + sizeof(bool) >= _bytes.Length)
+            if (_cursor >= _bytes.Length)
             {
                 return false;
             }
@@ -199,7 +199,7 @@ namespace Odin.OdinNetworking
         /// <returns>The float or 0.0 if out of bounds</returns>
         public float ReadFloat()
         {
-            if (_cursor + sizeof(float) >= _bytes.Length)
+            if (_cursor >= _bytes.Length)
             {
                 return 0;
             }
@@ -215,7 +215,7 @@ namespace Odin.OdinNetworking
         /// <returns>The double decoded</returns>
         public double ReadDouble()
         {
-            if (_cursor + sizeof(double) >= _bytes.Length)
+            if (_cursor >= _bytes.Length)
             {
                 return 0;
             }
