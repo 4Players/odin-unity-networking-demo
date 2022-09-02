@@ -62,12 +62,12 @@ public class Player : OdinPlayer
             meshRenderer.materials[0].color = Color.blue;
         }
     }
-    
+
     /// <summary>
     /// Handles 
     /// </summary>
     /// <param name="message"></param>
-    public override void OnCommandReceived(OdinCommandMessage message)
+    public override void OnCustomMessageReceived(OdinCustomMessage message)
     {
         if (message.Name == "SetForce")
         {
@@ -78,14 +78,9 @@ public class Player : OdinPlayer
                 Debug.Log($"Adding Push {dir}");
                 networkedObject.GetComponent<Rigidbody>().AddForce(dir * 6.0f, ForceMode.Impulse);
             }
-        } else if (message.Name == "ToggleLight")
-        {
-            Debug.Log($"Received command {message.Name}: {(bool)message.GetValue("enabled")}");
-            DemoWorld world = (DemoWorld)OdinWorld.Instance;
-            world.lightEnabled = (bool)message.GetValue("enabled");
         }
     }
-
+    
     // Update is called once per frame
     void Update()
     {
@@ -118,9 +113,13 @@ public class Player : OdinPlayer
         
         if (Keyboard.current.lKey.wasReleasedThisFrame)
         {
+            // Toggle the light. This will be either set directly by the host or a message is send to the host if 
+            // the client is not the host.
+            
             DemoWorld world = (DemoWorld)OdinWorld.Instance;
-            OdinCommandMessage message = new OdinCommandMessage("ToggleLight");
-            message.SetValue("enabled", !world.lightEnabled);
+            //world.lightEnabled = !world.lightEnabled;
+
+            OdinRpcMessage message = new OdinRpcMessage("ToggleLight", world.lightEnabled);
             OdinNetworkManager.Instance.SendCommand(message);
         }
 
@@ -155,4 +154,13 @@ public class Player : OdinPlayer
             virtualCamera.LookAt = transform;
         }
     }
+
+    public void ToggleLight(bool enabled)
+    {
+        DemoWorld world = (DemoWorld)OdinWorld.Instance;
+        world.lightEnabled = !world.lightEnabled;
+        
+        Debug.Log($"Toggle Light RPC received: {enabled}");
+    }
+    
 }

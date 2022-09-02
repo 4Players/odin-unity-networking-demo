@@ -2122,7 +2122,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 66b35f2fd7c9544d4a92eca29e360920, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  SendInterval: 0.1
+  SendInterval: 0.05
   Owner: {fileID: 0}
   ObjectId: 0
   PrefabId: 0
@@ -2906,6 +2906,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
+      objectReference: {fileID: 0}
+    - target: {fileID: 5372910402810491490, guid: a421abe223e2dee45b89e686a84e5545,
+        type: 3}
+      propertyPath: Server
+      value: https://gateway.odin.4players.io
       objectReference: {fileID: 0}
     - target: {fileID: 5372910402810491490, guid: a421abe223e2dee45b89e686a84e5545,
         type: 3}
@@ -3955,7 +3960,7 @@ PrefabInstance:
         type: 3}
       propertyPath: playerPrefab
       value: 
-      objectReference: {fileID: 2048439173770602077, guid: 81084f989d92f4c2b9b2a2418b030109,
+      objectReference: {fileID: 2048439173770602077, guid: cea0d00ce239d41c4b96a5b0e12367eb,
         type: 3}
     - target: {fileID: 2293135876128916084, guid: cf375621e85bb4de69720f1d0f5626ea,
         type: 3}

@@ -1,9 +1,11 @@
 using System.Linq;
+using System.Reflection;
 using ElRaccoone.Tweens;
 using Odin.OdinNetworking.Messages;
 using OdinNative.Odin.Peer;
 using OdinNative.Odin.Room;
 using OdinNative.Unity.Audio;
+using UnityEditor;
 using UnityEngine;
 
 namespace Odin.OdinNetworking
@@ -82,6 +84,20 @@ namespace Odin.OdinNetworking
             if (Time.time - _lastSent > SendInterval)
             {
                 UpdateUserData();
+
+                // If this is not the host, and locally changed a world sync var
+                // send that change request to the host so that the host can make
+                // that change to the world state
+                if (!IsHost)
+                {
+                    // Send update sync var messages to the host
+                    var list = OdinWorld.Instance.GetDirtySyncVars();
+                    foreach (var syncVar in list)
+                    {
+                        var message = new OdinUpdateWorldSyncVarMessage(syncVar.FieldInfo.Name, syncVar.FieldInfo.GetValue(OdinWorld.Instance));
+                        OdinNetworkManager.Instance.SendCommand(message);
+                    }                    
+                }
             }
         }
 
@@ -204,32 +220,24 @@ namespace Odin.OdinNetworking
         /// identity. This function can be overriden by base classes to implement custom messages. 
         /// </summary>
         /// <remarks>Call the base class if you want to keep standard functionality like spawning prefabs over the network</remarks>
-        /// <param name="sender">The identity that sent this message</param>
-        /// <param name="message">The message object containing the data. You can use <see cref="Odin.OdinNetworking.Messages.OdinMessage.MessageType"/>
+        /// <param name="message">The message object containing the data. You can use <see cref="MessageType"/>
         /// </param>
-        public virtual void OnMessageReceived(OdinNetworkIdentity sender, OdinMessage message)
+        public virtual void OnMessageReceived(OdinMessage message)
         {
-            if (message is OdinSpawnPrefabMessage spawnPrefabMessage)
-            {
-                var prefabId = spawnPrefabMessage.PrefabId;
-                var objectId = spawnPrefabMessage.ObjectId;
-                var position = spawnPrefabMessage.Position;
-                var rotation = spawnPrefabMessage.Rotation;
-                OdinNetworkManager.Instance.SpawnPrefab(this, prefabId, objectId, position, rotation);
-            }
+
         }
 
         /// <summary>
-        /// Commands are special message that are only processed by the host. Other identities send a command to the host
+        /// Commands are special message that are only processed by the host. Other identities send a message to the host
         /// that will change the world accordingly and will then update to the world. If every identity could change
         /// the world it would often come to collisions and merge conflicts. Therefore only one player in the world
         /// is the host and responsible for updating the world. Other players in the world send their wish list of changes
-        /// to as a command, which is processed by the host. This makes sure everyone sees the world in the same state.
+        /// to as a message, which is processed by the host. This makes sure everyone sees the world in the same state.
         /// </summary>
         /// <remarks>You should override this function and implement your own commands. Make sure to check if you are the
         /// host with the <see cref="Odin.OdinNetworking.OdinNetworkIdentity.IsHost"/></remarks> property.
-        /// <param name="message">The command message received</param>
-        public abstract void OnCommandReceived(OdinCommandMessage message);
+        /// <param name="message">The message message received</param>
+        public abstract void OnCustomMessageReceived(OdinCustomMessage message);
 
         /// <summary>
         /// Called from the <see cref="Odin.OdinNetworking.OdinNetworkManager"/> whenever a new
@@ -313,7 +321,7 @@ namespace Odin.OdinNetworking
                     var networkedObject = OdinWorld.Instance.GetNetworkObject(managedObject.ObjectId);
                     if (networkedObject)
                     {
-                        networkedObject.OnUpdatedFromNetwork(managedObject);
+                        networkedObject.OnUpdatedFromNetwork(managedObject, false);
                     }
                     else
                     {
@@ -422,6 +430,40 @@ namespace Odin.OdinNetworking
                     Destroy(playbackComponent);
                 }
             }
+        }
+
+        /// <summary>
+        /// Send a message over the network to all remote peers. 
+        /// </summary>
+        /// <param name="message">The message object to be sent to other peers</param>
+        /// <param name="includeSelf">If true, the message will also loop back to the sender</param>
+        public virtual void BroadcastMessage(OdinMessage message, bool includeSelf = false)
+        {
+            OdinNetworkManager.Instance.SendMessage(message, includeSelf);
+        }
+        
+        /// <summary>
+        /// Send a message to a selected peer
+        /// </summary>
+        /// <remarks>You can create your own messages. For this, create a subclass of <see cref="Odin.OdinNetworking.Messages.OdinMessage"/>
+        /// and add the required properties that should be part of the message. Then implement the serialization of the
+        /// message (see existing messages for reference). Override the <see cref="Odin.OdinNetworking.OdinNetworkIdentity.OnMessageReceived"/>
+        /// and handle the logic for your custom message once received on client side.
+        /// </remarks>
+        /// <param name="message">The message that should be sent</param>
+        /// <param name="receiver">The receiver of that message</param>
+        public virtual void SendMessage(OdinMessage message, OdinNetworkIdentity receiver)
+        {
+            OdinNetworkManager.Instance.SendMessage(message, receiver);
+        }
+
+        /// <summary>
+        /// Send a message to the (current) host. 
+        /// </summary>
+        /// <param name="message">The message that should be sent to the host</param>
+        public virtual void SendCommand(OdinMessage message)
+        {
+            OdinNetworkManager.Instance.SendCommand(message);
         }
     }
 }

@@ -64,7 +64,9 @@ namespace Odin.OdinNetworking.Messages
             RegisterMessageType<OdinSpawnPrefabMessage>();
             RegisterMessageType<OdinUserDataUpdateMessage>();
             RegisterMessageType<OdinWorldUpdateMessage>();
-            RegisterMessageType<OdinCommandMessage>();
+            RegisterMessageType<OdinCustomMessage>();
+            RegisterMessageType<OdinUpdateWorldSyncVarMessage>();
+            RegisterMessageType<OdinRpcMessage>();
         }
 
         /// <summary>

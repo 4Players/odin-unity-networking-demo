@@ -241,3 +241,431 @@ In a nutshell, we just build a data structure with sync vars that describe the s
 the scene. As the state is synced over the network, the same changes will be applied at all clients at (roughly) the same time and
 everyone sees the same things.
 
+# Understanding managed networked objects
+
+Many use cases require players to interact with objects in the world. These objects are either part of the world, or are "created"
+or spawned by players. A good example is one player dropping a coin and another player picking it up to transfer money in
+a virtual environment.
+
+What happens here is, that player A spawns a coin object into the world with some metadata attached to it (like the previous owner)
+and player B destroys the coin once he walks over the coin. Leveraging attached metadata can be used to understand who dropped the
+coin and its value for example.
+
+## Understanding authority
+
+In networking authority is an important concept. In a networked world we need to make sure that every peer connected to it has (roughly)
+the same state of the world and everyone can interact with objects in that world. It often happens, that objects are manipulated
+by more than one player, for example if players collide with an object that moves - it should move for all players. But the state
+of each networked object must be compiled and synced over the network. To prevent that the state of the same object is sent over the
+network with perhaps slightly different values by every player, every networked object has exactly one peer that has authority over it.
+
+Only the peer with authority is responsible for updating the state of that object in the network. All other peers get the updated state
+and just set the new values in their own copy of the world.
+
+Authority is set by these rules:
+- Every peer has authority over its own virtual representation (identity) in the network. I.e. every peer controls its own characters
+  state like position, animation and sync vars.
+- The peer that spawned an object in the network has authority over it
+- Objects can only be destroyed by its owner (i.e. the peer that has authority)
+- The (dynamically chosen host peer) has authority over world objects, i.e. objects that are placed at design time
+
+## Lifecycle of a managed object
+
+Odin Networking supports this use case with managed networked objects. Each managed networked object is owned by one and only peer
+and thus becomes part of the update message that the peer sends 10 times a second.
+
+Lets have a look what happens under the hood:
+- If a player (or more exact a `OdinNetworkIdentity`) spawns an object a message is created which is sent to all
+  other players in the world containing an identifier which object to create and where it should be placed
+- All players receive that message in their `OnMessageReceived` callback function
+- The default implementation (you should always call the base method if your override that method in your own class)
+  finds a `OdinSpawnPrefabMessage` with the information what object should be create and where to place it
+- Now, every player `Instantiates` the same prefab at roughly the same time and sets its initial transform
+- As spawnable prefabs need to have the `OdinNetworkedObject` script attached the sender of the message will
+  become the owner (i.e. that player that created it) and the object will get an ObjectId that is also sent by the
+  player who created it and uniquely identifies the object within the domain of its owner.
+- From now on, the objects transform and sync vars will be part of the creators update message
+- Every 10th of a second all players send an `OdinUserDataUpdateMessage` which contains information about the players
+  state but also all objects the player has authority.
+- Every peer receives that message in the `OnUpdatedFromNetwork`. The object created by the player will also have an
+  updated state of the object. So every peer now searches the managed object by the owner and ObjectId and will update
+  the its state accordingly.
+- Only the player who has authority over an object can destroy it. So, it the player destroys the object he created no
+  message will be sent. The creator just destroys the object from the scene so it will not become part of the next
+  update message.
+- Peers will iterate through all managed objects in the `OdinUserDataUpdateMessage`. After that cycle all objects that
+  were not part of that message will be removed as the obviously dont exist in the creators world anymore.
+
+That's it. That's the whole lifecycle of managed objects.
+
+# Understanding unmanaged objects
+
+Not every networked object needs to be in perfect sync on all clients. A firework for example, or think of an animation that
+shows an upgrade of an avatar. It may be important, that the animation of firework starts on all clients at the same time,
+but it's not necessary that every particle is exactly positioned. Another example would be a pigeon "created" by a magician.
+It should be getting visible on every client, but once its flying away, we don't need to have the same route on all clients.
+
+For these use cases, Odin Networking supports unmanaged objects. These are prefabs that get spawned at a specific transformation
+on every client but once created, they are not tracked in the network, they are independently in each clients scene.
+
+A few simply rules apply:
+- As only the creation of the object is triggered over the network, you need to make sure that the objects getting destroyed
+  once it's not required anymore.
+- Best way to do that is to create a script and derive it from `OdinNetworkedObject` or just adding the `OdinNetworkedObject`
+  to the prefab. This script features a `Lifetime` setting which if set to greater than 0 will automatically destroy the object
+  after timeout.
+- The prefab must be added to the managed prefab list of your `OdinNetworkManager` instance (it's the same workflow as for
+  managed objects)
+- You can spawn the object in the network with a simple call to `OdinNetworkItem.SpawnNetworkedObject` with the name of the
+  prefab and the position and rotation.
+
+Under the hood, a special `SpawnPrefab` message will be sent to all clients that will search the prefab in their prefab list
+and use the standard Unity `Instantiate` function to create an instance of it at the given position and rotation.
+
+# Syncing the world
+
+We have come a long way with avatars synced automatically over the network and being able to spawn objects and keeping
+them updated over the network. However, in most use cases, players don't start in an empty world but in scenes containing
+objects that players/avatars can interact with. And these interactions should be visible on all clients. A simple example
+would be a light switch. Every user in the world can toggle the switch and it's state should be synced over the network.
+
+As with managed objects, it's required that we have one single source of trust, that has authority over world objects. The
+classic solution to this is to build a dedicated server that holds the world state. While this is a very good way of doing
+it, it's also the most complicated one as you always have to deal with both sides, the server and the client. That is
+getting very complicated especially if you have a larger project. With `Odin Networking` we want to make it as easy as 
+possible which will lack some features, but you don't have to handle or create a server. You just do things as you would
+in a single player game and Odin does the heavy lifting of syncing the state back and forth to other players.
+
+So, how does it work.
+
+## Dynamic hosts
+
+The concept of one single source of trust for all world objects (i.e. objects that have been created at design time and that
+allow users to interact with) also applies in `Odin Networking`. However, there is no fixed host or server. The host is
+determined dynamically at runtime based on some deterministic rules. To understand the concept, let's have a simple
+experiment:
+
+Think of a system that requires 100 people to have the same integer number at the same time. And you want to make sure, that
+all of these people have the same number instantly. You could build a very complex communication pipeline and someone decides
+the about it's about to change that number and then needs to make sure every other peer in the group gets notified about it.
+That is the challenge of building a networked application. Sometimes, it's much simpler to not sending around information but
+instead just building a set of simple rules that will make sure that everyone will get the same number at the same point in
+time. This is called determinism or a deterministic algorithm. A solution for our challenge could be this: `hours * 100 + minutes`.
+So, if it's 10:23, the integer value would be 10*100+23 which is 1023. Every peer in the group will automatically generate
+the same number at the same time without sending anything around.
+
+This is how `Odin Networking` works. Whenever its time to update the state over the network (in general it's every 1/10th of
+a second) every peer in the network determines the host by a deterministic algorithm. That host will pack the state of the
+world into his own update message and mark the message to contain host data. Every peer will get that message and will
+update the world state with the info packaged in that message.
+
+How do we determine the host? It's very simple. Every peer connected to the room has a `PeerId`, which is an integer value
+identifying the peer anonymously in the network. Host is the peer with the smallest `PeerId`. So, usually the first player
+connected to the room will become host. But, if that host player disconnects, the system will automatically determine another
+host in real-time without any data management.
+
+You can use the function `OdinNetworkItem.IsHost` to figure out if the current player is the host.
+
+## Setting up the world
+
+To set up the networked world in the Unity editor you only have to follow these few steps:
+
+- Create a new script and derive it from `OdinWorld`. In this script, you can create sync vars that will automatically be synced 
+  over the network for global settings like the sun position.
+- Create a new game object and name it `Odin World` (or whatever makes sense for you) in the scene and attach your new script to it.
+- Create `OdinSyncVar` properties that will be synced over the network automatically.
+
+The world still is a bit boring, so let's add some objects users can interact with:
+
+- Create another game object like a cube and either add the `OdinNetworkedObject` script to it or create a new class and derive 
+  it from `OdinNetworkedObject` and attach it to your new game object. You can do everything with it that you can do with managed
+  objects. You can create sync vars and the transform will automatically synced over the network.
+
+## Syncing the world
+
+When the scene starts, your `OdinWorld` script will search for all (even inactive) objects in the scene that have an `OdinNetworkedObject`
+script attached to it and add it to an internal `ManagedObjects` list. Whenever the host peer sends an update it will ask the
+world object to compile its state. It will compile the state of all managed objects in the list and the sync vars of the world
+object and hand it over to the host peer to sync over the network.
+
+Every non-host peer will receive that update and will update all world objects (they have compiled in their scene).
+
+That's it. Now you can create a world with dynamic objects and every player can interact with the world synced over the network.
+But there is one important concept left: `Commands`.
+
+## Under the hood
+
+As defined before, the host is handling the worlds state. Although the host is determined dynamically it still applies, that there
+needs to be a single source of trust for the worlds state. Let's get back to our example of a light switch that can be used to
+toggle a light on and off. We want that switch to be synced over the network.
+
+The easiest way to build that with `Odin Networking` would be to create a new `LightToggle` script with a sync var storing the
+state of the light switch. A hook function `OnLightEnabled` would be added and called whenever the state of the sync var changes
+with code to enable or disable the light. Let's have a look into that script:
+
+```C#
+class LightToggle: OdinNetworkedObject
+{
+    [OdinSyncVar(hook=nameof(OnLightEnabledChanged))]
+    book lightEnabled = true;
+    
+    private Light _light = null;
+    
+    void Start()
+    {
+      _light = GetComponent<Light>();
+      if (_light == null) return;
+      _light.enabled = lightEnabled;
+    }
+    
+    void OnLightEnabledChanged(bool oldValue, bool newValue)
+    {
+      if (_light == null) return;
+      _light.enabled = newValue;
+    }
+    
+    void ToggleLight()
+    {
+      // This will set the value of the sync var which will be automatically be 
+      // synced over the network in the next interval
+      lightEnabled = !lightEnabled;
+    }
+}
+```
+
+As simple as it gets. Whenever a player toggles the light, i.e. using the `Use` key close to the toggle, you would
+call the `ToggleLight` function which will set the sync var value which will then be synced as part of the update
+state of the host in the next interval. 
+
+Wait! This sounds like that only the host can adjust the worlds state. But, what if a player is not the host? In
+most networking frameworks "Commands" are used for that. So all non-host clients need to send a command to the
+server, which then changes the world state and syncing it back to clients. This quickly becomes messy, as you
+always have to think about that client-server structure. In some use-cases, like competitive multiplayer this makes
+sense because cheating is getting more difficult. But with `Odin Networking` we prioritize simplicity over cheat
+protection.
+
+With `Odin Networking` you can can also change the world state from clients without sending commands. So, if a 
+player toggles the light you don't have to care if the player is the host or not. You just change the world state
+and `Odin Networking` make sure that this change gets distributed over the network.
+
+What happens under the hood is this:
+
+- Every interval the system identifies sync vars of world objects that have been changed (locally) 
+- If the local player is host, sync vars are updated and will get compiled as usual as part of the world update
+  package as described above
+- If the local player is not a host, we need to do it differently, as only the host can distribute the new values.
+  Instead an `OdinUpdateSyncVarMessage` command (see below) is sent to the (current) host.
+- The host will receive the command and will update the sync var on the other peers.
+
+# Remote Procedure Calls (RPCs)
+
+RPCs are a standard concept in networking and stands for Remote Procedure Call. The idea is to provide a way to execute 
+a function on a remote peer. `Odin Networking` supports RPCs via the `OdinRpcMessage` class which is derived from 
+`OdinMessage` and as such can be sent via the `SendMessage` or `SendCommand` interfaces.
+
+You create an instance of that class and provide the function name and the parameters. We support up to four parameters:
+
+```C#
+// Prepare calling function named ToggleLight on remote peers with one boolean parameter
+OdinRpcMessage command = new OdinRpcMessage("ToggleLight", world.lightEnabled);
+
+// Prepare calling a function named SetPosition on remote peers with three float parameters
+OdinRpcMessage command = new OdinRpcMessage("SetPosition", transform.position.x, transform.position.y, transform.position.z);
+```
+
+The functions will look like this:
+```C#
+public void ToggleLight(bool enabled)
+{    
+    Debug.Log($"Toggle Light RPC received: {enabled}");
+}
+
+public void SetPosition(float x, float y, float z)
+{    
+    Debug.Log($"Set Position RPC received: {x}, {y}, {z}");
+}
+```
+
+After you have created your RPC you need to send it over the network. Remote peers will receive that message and
+will try to call the function given by the name using standard C# method invoking. If the method can not be found
+an error will be posted in the console.
+
+You can either send RPCs as a command or a message. The difference is that messages are sent to all remote peers and
+commands are only sent to the (current) host.
+
+## Commands
+
+Commands are messages that are sent from one peer to the host. The host uses these commands to update the world
+state. This way, also peers can modify the world without being host.
+
+Under the hood, commands are standard messages sent via the `SendCommand` function that is available in `OdinNetworkIdentity`.
+To send the rpc message that we created earlier (ToggleLight) use this code:
+
+```C#
+public class MyPlayer: OdinPlayer
+{
+    /// ...
+    
+    // Called if the player toggles the light switch
+    void OnLightToggled() 
+    {    
+        // Prepare calling function named ToggleLight on remote peers with one boolean parameter
+        OdinRpcMessage command = new OdinRpcMessage("ToggleLight", world.lightEnabled);
+        
+        // Send the rpc message to the host
+        SendCommand(command);
+    }
+    
+    // This will only be called on the host (if sent via SendCommand)
+    [OdinCommand]
+    void ToggleLight(bool enabled)
+    {
+        Debug.Log($"Toggle Light Command received: {enabled}");
+    }
+    
+    /// ...
+}
+```
+
+## Message
+
+Sending RPCs as a message just broadcasts that function call to all remote peers. If you
+want something happen on all peers at once (without changing the world state) you can send
+an RPC call to all peers using the `SendMessage` function.
+
+This is useful if you want to trigger an animation, or you can also trigger a game over
+sequence if one peer in a cooperative game has lost his last life.
+
+```C#
+public class MyPlayer: OdinPlayer
+{
+    /// ...
+    
+    // Called if the player has lost his last life
+    void OnGameOver() 
+    {    
+        // Prepare calling function named ToggleLight on remote peers with one boolean parameter
+        OdinRpcMessage command = new OdinRpcMessage("LoadGameOverScene");
+        
+        // Send the rpc message to all peers that will execute that function at the same time
+        SendMessage(command);
+    }
+    
+    // Called on all peers at (roughly) the same time
+    void LoadGameOverScene()
+    {
+        SceneManager.LoadScene("GameOver");
+    }
+    
+    /// ...
+}
+```
+
+# Custom Messages
+
+`OdinNetworking` comes with a variaty of internal messages that handle the sync of world state and
+calling remote procedures or spawning prefabs.
+
+However, you might want to create your own messages. For this, you have two options:
+
+- Using the `OdinCustomMessage` class and the `OnCustomMessageReceived` callback
+- Creating your own message classes and handling them in `OnMessageReceived`
+
+Let's dive into both options:
+
+## Using OdinCustomMessage
+
+This is the easiest option because you don't have to create your own message class. An
+`OdinCustomMessage` has a name and a key value store attached to it. So they are very
+flexible:
+
+```C#
+// Code executed by the client
+OdinCustomMessage message = new OdinCustomMessage("ShowNotification");
+message.SetValue("message", "I am the king");
+OdinNetworkManager.Instance.SendMessage(message);
+```
+
+The remote peers will receive that message object in the `OnCustomMessageReceived` function and will 
+handle it like this:
+
+```C#
+// Code executed on the host
+public override void OnCustomMessageReceived(OdinCustomMessage message)
+{
+    if (command.Name == "ShowNotification")
+    {
+        // Show a notification
+        ShowNotification(message.GetValue("message"));        
+    }
+}
+```
+
+As you can see, this is pretty simple. However, there is one caveat: You won't get any
+design time help from your IDE for this. If there is a typo there is no way for Odin to
+prevent that. So, debugging might get a bit difficult. For simple use cases or prototyping
+this is not a big deal, but for larger projects we suggest creating your own messages.
+
+## Custom Message Classes
+
+This is the most flexible option. You can create your own message classes and handle them in the
+`OnMessageReceived` function.
+
+Please note: You will also need to implement serialization and deserialization for your
+custom message classes. That is pretty simple, but it makes the whole process a bit more
+complicated.
+
+So, let's dive in:
+
+```C#
+public class ShowNotificationMessage : OdinMessage
+{
+    public string Message;
+    
+    public ShowNotificationMessage(string message) : base(name)
+    {
+        Message = message;
+    }
+    
+    // We need to implement deserialization
+    public OdinRpcMessage(OdinNetworkReader reader) : base(reader)
+    {
+        // Read a string from the memory store 
+        Message = reader.ReadString();        
+    }
+
+    // We need to implement serialization
+    public override OdinNetworkWriter GetWriter()
+    {
+        // Create a memory store and write the string to it
+        OdinNetworkWriter writer = base.GetWriter();
+        writer.Write(Message);        
+    }
+}
+```
+
+That's it. Now you can send your custom message like this:
+
+```C#
+// Code executed by the client
+ShowNotificationMessage message = new ShowNotificationMessage("I am the king");
+OdinNetworkManager.Instance.SendMessage(message);
+```
+
+The peers will receive that message object in the `OnCustomMessageReceived` function and will 
+handle it like this:
+
+```C#
+// Code executed on the host
+public override void OnMessageReceived(OdinMessage message)
+{
+    if (message is ShowNotificationMessage)
+    {
+        // Show a notification
+        ShowNotification((message as ShowNotificationMessage).Message);        
+    }    
+}
+```
+
+As you can see, this is a bit more complicated. However, you get full IDE support, code analyses, and
+many other features that make your life easier once your project is getting a larger and more complex.

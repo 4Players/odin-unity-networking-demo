@@ -6,10 +6,10 @@ namespace Odin.OdinNetworking.Messages
     /// Command messages are special as they are flexible and are sent by clients to the host that processes the commands
     /// and updates the world afterwards. Commands have a name and a list of parameters that you can use to customize the
     /// commands. Parameters can be of any <see cref="Odin.OdinNetworking.Messages.OdinPrimitive"/> type.
-    /// <remarks>The host received commands in the <see cref="Odin.OdinNetworking.OdinNetworkIdentity.OnCommandReceived"/></remarks>
+    /// <remarks>The host received commands in the <see cref="OdinNetworkIdentity.OnCustomMessageReceived"/></remarks>
     /// callback where they can handle it.
     /// </summary>
-    public class OdinCommandMessage : OdinMessage
+    public class OdinCustomMessage : OdinMessage
     {
         /// <summary>
         /// The parameters set in this command. Use SetValue to set a parameter value by name
@@ -21,12 +21,11 @@ namespace Odin.OdinNetworking.Messages
         /// </summary>
         public string Name;
 
-        
         /// <summary>
         /// Create a command and give it a name.
         /// </summary>
         /// <param name="name">The name of the command.</param>
-        public OdinCommandMessage(string name)
+        public OdinCustomMessage(string name)
         {
             Name = name;
         }
@@ -66,7 +65,7 @@ namespace Odin.OdinNetworking.Messages
         /// Deserialize a command from a reader
         /// </summary>
         /// <param name="reader">The reader from which to read the properties</param>
-        public OdinCommandMessage(OdinNetworkReader reader)
+        public OdinCustomMessage(OdinNetworkReader reader)
         {
             Name = reader.ReadString();
             SyncVars = ReadSyncVars(reader);

@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Threading;
 using Odin.OdinNetworking.Messages;
 using OdinNative.Odin;
@@ -362,7 +363,7 @@ namespace Odin.OdinNetworking
 
         /// <summary>
         /// Handles MessageReceived Odin events. This function creates an <see cref="Odin.OdinNetworking.Messages.OdinMessage"/>
-        /// instance (typically a subclass of OdinMessage) and either calls the <see cref="Odin.OdinNetworking.OdinNetworkIdentity.OnCommandReceived"/>
+        /// instance (typically a subclass of OdinMessage) and either calls the <see cref="OdinNetworkIdentity.OnCustomMessageReceived"/>
         /// if its a command (special type of message) or <see cref="Odin.OdinNetworking.OdinNetworkIdentity.OnMessageReceived"/>
         /// if its a message. 
         /// </summary>
@@ -382,18 +383,44 @@ namespace Odin.OdinNetworking
             OdinMessage message = OdinMessage.FromReader(reader);
             if (message != null)
             {
-                if (message is OdinCommandMessage commandMessage)
-                {
-                    // Only send commands to the host
-                    if (networkedObject.IsHost)
-                    {
-                        networkedObject.OnCommandReceived(commandMessage);
-                    }   
-                }
-                else
-                {
-                    networkedObject.OnMessageReceived(networkedObject, message);    
-                }
+                HandleMessage(networkedObject, message);
+            }
+        }
+
+        protected virtual void HandleMessage(OdinNetworkIdentity receiver, OdinMessage message)
+        {
+            if (message is OdinSpawnPrefabMessage spawnPrefabMessage)
+            {
+                var prefabId = spawnPrefabMessage.PrefabId;
+                var objectId = spawnPrefabMessage.ObjectId;
+                var position = spawnPrefabMessage.Position;
+                var rotation = spawnPrefabMessage.Rotation;
+                SpawnPrefab(receiver, prefabId, objectId, position, rotation);
+            } 
+            else if (message is OdinRpcMessage rpcCommand)
+            {
+                OnRpcReceived(receiver, rpcCommand);
+            }
+            else if (message is OdinCustomMessage customMessage)
+            {
+                receiver.OnCustomMessageReceived(customMessage);
+            }
+            else
+            {
+                receiver.OnMessageReceived(message);
+            }
+        }
+        
+        public virtual void OnRpcReceived(OdinNetworkIdentity receiver, OdinRpcMessage rpcMessage)
+        {
+            var hookMethod = receiver.GetType().GetMethod(rpcMessage.MethodName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+            if (hookMethod != null)
+            {
+                hookMethod.Invoke(receiver, rpcMessage.Parameters);
+            }
+            else
+            {
+                Debug.LogError($"RPC Function {rpcMessage.MethodName} not found on {GetType().Name}");
             }
         }
         
@@ -624,6 +651,44 @@ namespace Odin.OdinNetworking
         }
 
         /// <summary>
+        /// Send a message to a selected peer
+        /// </summary>
+        /// <remarks>You can create your own messages. For this, create a subclass of <see cref="Odin.OdinNetworking.Messages.OdinMessage"/>
+        /// and add the required properties that should be part of the message. Then implement the serialization of the
+        /// message (see existing messages for reference). Override the <see cref="Odin.OdinNetworking.OdinNetworkIdentity.OnMessageReceived"/>
+        /// and handle the logic for your custom message once received on client side.
+        /// </remarks>
+        /// <param name="message">The message that should be sent</param>
+        /// <param name="receiver">The receiver of that message</param>
+        public void SendMessage(OdinMessage message, OdinNetworkIdentity receiver)
+        {
+            _room.SendMessageAsync(new[] { receiver.Peer.Id }, message.ToBytes());
+        }
+        
+        /// <summary>
+        /// Send a command to the current host which has to process the command. A command has a name and a list of parameters
+        /// that can be set by the sender.
+        /// </summary>
+        /// <param name="message">The command message</param>
+        public void SendCommand(OdinMessage message)
+        {
+            // TODO: There are edge cases where this might not work, i.e. command is sent, and before the command is processed
+            // the host changes.
+            
+            var host = GetHost();
+            if (host == null) return;
+
+            // Odin does not allow messages to be sent to yourself. So, if this is the host, fake the network response
+            if (host.Id == LocalPlayer.Peer.Id)
+            {
+                HandleMessage(LocalPlayer, message);
+                return;
+            }            
+            
+            _room.SendMessageAsync(new[]{ host.Id }, message.ToBytes());
+        }
+
+        /// <summary>
         /// Returns true if the local player is the host. The host has responsibility for handling commands and to update
         /// the worlds state to other clients.
         /// </summary>
@@ -680,29 +745,6 @@ namespace Odin.OdinNetworking
 
             Debug.LogError("No peer found");
             return null;
-        }
-
-        /// <summary>
-        /// Send a command to the current host which has to process the command. A command has a name and a list of parameters
-        /// that can be set by the sender.
-        /// </summary>
-        /// <param name="message">The command message</param>
-        public void SendCommand(OdinCommandMessage message)
-        {
-            // TODO: There are edge cases where this might not work, i.e. command is sent, and before the command is processed
-            // the host changes.
-            
-            var host = GetHost();
-            if (host == null) return;
-
-            // Odin does not allow messages to be sent to yourself. So, if this is the host, fake the network response
-            if (host.Id == LocalPlayer.Peer.Id)
-            {
-                LocalPlayer.OnCommandReceived(message);
-                return;
-            }            
-            
-            _room.SendMessageAsync(new[]{ host.Id }, message.ToBytes());
         }
 
         /// <summary>

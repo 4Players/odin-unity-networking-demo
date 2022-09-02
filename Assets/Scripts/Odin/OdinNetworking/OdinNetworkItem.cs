@@ -16,7 +16,7 @@ namespace Odin.OdinNetworking
         /// <summary>
         /// Stores sync vars and the last value of this object. 
         /// </summary>
-        protected class OdinSyncVarInfo
+        public class OdinSyncVarInfo
         {
             public FieldInfo FieldInfo;
             public OdinSyncVar OdinSyncVar;
@@ -169,7 +169,7 @@ namespace Odin.OdinNetworking
         /// <param name="syncInfo">The sync var structure that has been changed</param>
         /// <param name="oldValue">The old value of the sync var before the update</param>
         /// <param name="newValue">The new value that has been received from the server</param>
-        private void OnSyncVarChanged(OdinSyncVarInfo syncInfo, object oldValue, object newValue)
+        protected virtual void OnSyncVarChanged(OdinSyncVarInfo syncInfo, object oldValue, object newValue)
         {
             syncInfo.FieldInfo.SetValue(this, newValue);
 
@@ -181,6 +181,34 @@ namespace Odin.OdinNetworking
                     hookMethod.Invoke(this, new[]{oldValue, newValue});
                 }
             }
+        }
+        
+        public virtual List<OdinSyncVarInfo> GetDirtySyncVars()
+        {
+            List<OdinSyncVarInfo> dirtySyncVars = new List<OdinSyncVarInfo>();
+            foreach (var key in _syncVars.Keys)
+            {
+                OdinSyncVarInfo syncInfo = _syncVars[key];
+                object currentValue = syncInfo.FieldInfo.GetValue(this);
+                
+                if (!currentValue.Equals(syncInfo.LastValue))
+                {
+                    if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
+                    {
+                        var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                        if (hookMethod != null)
+                        {
+                            hookMethod.Invoke(this, new[]{syncInfo.LastValue, currentValue});
+                        }
+                    }
+                    
+                    //Debug.Log($"Value for SyncVar {key} changed. Old value: {syncInfo.LastValue}, new Value: {currentValue}");
+                    dirtySyncVars.Add(syncInfo);
+                    syncInfo.LastValue = currentValue;
+                }
+            }
+
+            return dirtySyncVars;
         }
     
         /// <summary>
@@ -225,6 +253,27 @@ namespace Odin.OdinNetworking
             }
 
             return syncVars;
+        }
+
+        public void SetSyncVarValue(string name, object value)
+        {
+            OdinSyncVarInfo syncInfo = _syncVars[name];
+            if (syncInfo != null)
+            {
+                object oldValue = syncInfo.FieldInfo.GetValue(this);
+                
+                syncInfo.FieldInfo.SetValue(this, value);
+                syncInfo.LastValue = value;
+                
+                if (!string.IsNullOrEmpty(syncInfo.OdinSyncVar.hook))
+                {
+                    var hookMethod = this.GetType().GetMethod(syncInfo.OdinSyncVar.hook, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (hookMethod != null)
+                    {
+                        hookMethod.Invoke(this, new[]{oldValue, value});
+                    }
+                }
+            }
         }
     
         /// <summary>

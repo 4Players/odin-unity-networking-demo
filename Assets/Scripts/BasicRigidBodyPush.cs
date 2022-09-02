@@ -73,10 +73,10 @@ public class BasicRigidBodyPush : MonoBehaviour
 				OdinNetworkedObject worldItem = OdinNetworkManager.Instance.World.GetNetworkObject(hit.collider.gameObject);
 				if (worldItem)
 				{
-					OdinCommandMessage command = new OdinCommandMessage("SetForce");
-					command.SetValue("ObjectId", worldItem.ObjectId);
-					command.SetValue("PushDir", pushDir * strength);
-					OdinNetworkManager.Instance.SendCommand(command);
+					OdinCustomMessage message = new OdinCustomMessage("SetForce");
+					message.SetValue("ObjectId", worldItem.ObjectId);
+					message.SetValue("PushDir", pushDir * strength);
+					OdinNetworkManager.Instance.SendCommand(message);
 				}
 
 				_lastSent = Time.time;

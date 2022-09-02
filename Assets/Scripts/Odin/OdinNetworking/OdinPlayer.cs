@@ -78,7 +78,7 @@ namespace Odin.OdinNetworking
         /// Default implementation does nothing. Override this function to handle custom commands.
         /// </summary>
         /// <param name="message">The command message</param>
-        public override void OnCommandReceived(OdinCommandMessage message)
+        public override void OnCustomMessageReceived(OdinCustomMessage message)
         {
         }
         

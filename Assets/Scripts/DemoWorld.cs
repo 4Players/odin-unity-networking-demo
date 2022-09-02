@@ -22,6 +22,12 @@ public class DemoWorld : OdinWorld
         
     }
 
+    [OdinCommand]
+    void ToggleLight()
+    {
+        
+    }
+
     void OnLightEnabled(bool oldValue, bool newValue)
     {
         var light = FindObjectOfType<Light>();
