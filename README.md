@@ -13,7 +13,7 @@ This demo project is built on top of Unity Third Person Controller project to de
 In `Packages/io.fourplayers.odin` the ODIN SDK is bundled. The Assets folder contains these folders that are of interest:
 
 - `Assets/Scripts/Odin/Audio` in this folder scripts for audio occlusion are provided as Unity does not support audio occlusion out of the box
-- `Assets/Scripts/Odin/OdinNetworking`` is the code the ODIN Networking SDK.
+- `Assets/Scripts/Odin/OdinNetworking` is the code the ODIN Networking SDK.
 - `Assets/Scripts/Odin/` contains a couple of scripts like a simple "Player" script. These scripts leverage base classes from ODIN Networking.
 
 **Please note**: The ODIN Audio and the ODIN Networking folders will soon be bundled with the ODIN SDK. 
