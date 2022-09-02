@@ -45,7 +45,7 @@ Unity Editor) and you can interact and chat with them.
 You can change the body color in real time using the controls in the bottom left, as well as your name. By pressing the `SPACE` key the avatar will jump
 but also will release a managed object that has a built-in time to change its color. Notice how that color syncs to all other clients as well.
 
-Pressing the `R` key will place a flower, which is an unmanaged object but will also be replicated accross the network. Last but not least, pressing the `L` key will toggle the worlds light for everyone. Each of these features demonstrates one core concept of ODIN Networking:
+Pressing the `E` key will place a flower, which is an unmanaged object but will also be replicated accross the network. Last but not least, pressing the `L` key will toggle the worlds light for everyone. Each of these features demonstrates one core concept of ODIN Networking:
 
 - Spawning a managed object
 - Spawning am unmanaged object
