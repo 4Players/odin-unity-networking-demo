@@ -1,16 +1,16 @@
 # ODIN Networking
 
-This is a work-in-progress project of leveraging [ODIN by 4Players](https://www.4players.io/odin) for a real-time client-server based multiplayer 
+This is a work-in-progress project of leveraging [ODIN Voice](https://odin.4players.io/voice-chat/) by 4Players for a real-time client-server based multiplayer 
 solution.
 
-ODIN Networking layers above ODIN and leverages message pipeline that ODIN provides to sync player position, animation and managed objects with
+ODIN Networking layers above ODIN Voice and leverages message pipeline that it provides to sync player position, animation and managed objects with
 other users. In short, by just dropping a script on your player object and joining an ODIN room you have built a real-time multiplayer application
 where all users see all other users and can hear their voice. Users can interact with objects provided by the world (i.e. added at design time) and
 can spawn new objects to the world.
 
 This demo project is built on top of Unity Third Person Controller project to demonstrate the ease of use.
 
-In `Packages/io.fourplayers.odin` the ODIN SDK is bundled. The Assets folder contains these folders that are of interest:
+In `Packages/io.fourplayers.odin` the ODIN Unity SDK is bundled. The Assets folder contains these folders that are of interest:
 
 - `Assets/Scripts/Odin/Audio` in this folder scripts for audio occlusion are provided as Unity does not support audio occlusion out of the box
 - `Assets/Scripts/Odin/OdinNetworking` is the code the ODIN Networking SDK.
@@ -21,10 +21,15 @@ In `Packages/io.fourplayers.odin` the ODIN SDK is bundled. The Assets folder con
 ## Documentation
 
 You'll find complete documentation for the ODIN Networking SDK [here](Assets/Scripts/Odin/OdinNetworking/README.md).
+Check out our [full online documentation](https://docs.4players.io/voice/)!
 
-## ODIN SDK
+## What is ODIN Voice?
 
-Learn more about ODIN in general and its features (which are leveraged by OdinNetworking) in our [developer documentation](https://www.4players.io/odin).
+[ODIN Voice](https://odin.4players.io/voice-chat/) is a full-service voice chat solution by [4Players GmbH](https://www.4players.io/company/about_us/).
+
+## ODIN Unity SDK
+
+Learn more about ODIN in general and its features (which are leveraged by OdinNetworking) in our [developer documentation](https://docs.4players.io/voice/).
 
 ## Getting Started
 
@@ -35,7 +40,7 @@ Open the scene `Scenes/OdinNetworking` (its the same as the templates `Playgroun
 press Play. 
 
 The scene comes with a **bundled access key**. If more users are working with the same demo, you might face some issues with people connected that you dont know. Either enjoy it, or set your own access key in the `Odin Handler` Game Object in the scene. How to do that is described in detail in our
-[Unity manual](https://www.4players.io/odin/sdk/unity/manual/odineditorconfig/#client-authentication).
+[Unity manual](https://docs.4players.io/voice/unity/manual/odineditorconfig/#client-authentication).
 
 Build the player, distribute to one of your team members or collegues and everyone starting the client will be immediately visible in the world (even in the
 Unity Editor) and you can interact and chat with them.
